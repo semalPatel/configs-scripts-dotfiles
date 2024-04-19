@@ -21,4 +21,4 @@ echo \
 sudo apt-get update
 
 # install the latest version of docker
-sudo apt-get install -y docker.io
+sudo apt-get install docker.io
