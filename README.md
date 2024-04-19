@@ -1,5 +1,5 @@
 # dot-files-scripts
-Collection of scripts as well some config files for repetitive tasks.
+Collection of scripts as well some config files for repetitive tasks. This is a continuous list.
 
 ##### Easily switch JDK Versions
 
