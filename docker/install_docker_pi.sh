@@ -1,6 +1,7 @@
 #! /bin/bash
 
 # uninstall previous docker versions if installed
+echo "Removing previous installation of docker if present"
 for pkg in docker.io docker-doc docker-compose podman-docker containerd runc;
 do sudo apt-get remove $pkg;
 done
@@ -20,4 +21,4 @@ echo \
 sudo apt-get update
 
 # install the latest version of docker
-sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo apt-get install -y docker.io
