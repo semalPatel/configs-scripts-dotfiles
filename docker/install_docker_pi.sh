@@ -2,9 +2,12 @@
 
 # uninstall previous docker versions if installed
 echo "Removing previous installation of docker if present"
-for pkg in docker.io docker-doc docker-compose podman-docker containerd runc;
-do sudo apt-get remove $pkg;
+for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do
+sudo apt-get purge $pkg;
 done
+echo "Removing images, containers, and volumes"
+sudo rm -rf /var/lib/docker
+sudo rm -rf /var/lib/containerd
 
 # add docker's official GPG key:
 sudo apt-get update
@@ -21,4 +24,16 @@ echo \
 sudo apt-get update
 
 # install the latest version of docker
+echo "Installing docker"
 sudo apt-get install docker.io
+
+# optionally ask for docker-compose installation
+read -p 'Install docker-compose?[y/n]' response
+if [[ "$response" == "y" || "$response" == "Y" || "$response" == "yes" ]]; then
+echo "Installing docker-compose"
+curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+else
+echo "Skipping docker-compose"
+fi
+
+echo "Done with docker installation"
