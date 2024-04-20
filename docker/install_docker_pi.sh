@@ -12,7 +12,7 @@ sudo rm -rf /var/lib/containerd
 # install the latest version of docker
 echo "Installing docker"
 curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
+sudo bash get-docker.sh
 
 # optionally ask for docker-compose installation
 read -p 'Install docker-compose? [y/n] ' response
