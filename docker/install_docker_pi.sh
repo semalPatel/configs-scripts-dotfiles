@@ -33,6 +33,7 @@ read -p 'Install docker-compose? [y/n] ' response
 if [[ "$response" == "y" || "$response" == "Y" || "$response" == "yes" ]]; then
 echo "Installing docker-compose"
 sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+echo "Setting executable permissions for docker-compose"
 sudo chmod +x /usr/local/bin/docker-compose
 else
 echo "Skipping docker-compose"
