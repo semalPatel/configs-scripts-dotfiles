@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/usr/bin/env bash
 
 # uninstall previous docker versions if installed
 echo "Removing previous installation of docker if present"
