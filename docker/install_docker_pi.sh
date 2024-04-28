@@ -1,6 +1,22 @@
 #!/usr/bin/env bash
 
+sudo apt-get update
+
+####### begin oh-my-zsh installation #######
+echo "Installing oh my zsh"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+echo "Done with oh my zsh installation"
+####### end oh-my-zsh installation #######
+
+####### begin tmux installation #######
+echo "Installing tmux"
+apt install tmux
+echo "Done with tmux installation"
+####### end tmux installation #######
+
+####### begin docker installation #######
 # uninstall previous docker versions if installed
+echo "Installing docker"
 echo "Removing previous installation of docker if present"
 for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do
 sudo apt-get purge $pkg;
@@ -9,11 +25,9 @@ echo "Removing images, containers, and volumes"
 sudo rm -rf /var/lib/docker
 sudo rm -rf /var/lib/containerd
 
-sudo apt-get update
-
 # install the latest version of docker, includes docker-compose
-echo "Installing docker"
 curl -fsSL https://get.docker.com -o get-docker.sh
 sudo bash get-docker.sh
 
 echo "Done with docker installation"
+####### end docker installation #######
