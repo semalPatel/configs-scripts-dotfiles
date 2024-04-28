@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 
 sudo apt-get update
+sudo apt-get install vim
 
 ####### begin oh-my-zsh installation #######
 echo "Installing oh my zsh"
