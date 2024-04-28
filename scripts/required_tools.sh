@@ -5,7 +5,7 @@ sudo apt-get install vim
 
 ####### begin oh-my-zsh installation #######
 echo "Installing oh my zsh"
-curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh) -o get-oh-my-zsh.sh
+curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh -o get-oh-my-zsh.sh
 sh -c get-oh-my-zsh.sh
 echo "Done with oh my zsh installation"
 ####### end oh-my-zsh installation #######
