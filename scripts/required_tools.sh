@@ -3,13 +3,6 @@
 sudo apt-get update
 sudo apt-get install vim
 
-####### begin oh-my-zsh installation #######
-echo "Installing oh my zsh"
-curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh -o get-oh-my-zsh.sh
-sh -c get-oh-my-zsh.sh
-echo "Done with oh my zsh installation"
-####### end oh-my-zsh installation #######
-
 ####### begin tmux installation #######
 echo "Installing tmux"
 sudo apt install tmux
@@ -33,3 +26,10 @@ sudo sh get-docker.sh
 
 echo "Done with docker installation"
 ####### end docker installation #######
+
+####### begin oh-my-zsh installation #######
+echo "Installing oh my zsh"
+sudo apt install zsh
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+echo "Done with oh my zsh installation"
+####### end oh-my-zsh installation #######
