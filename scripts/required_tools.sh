@@ -10,7 +10,7 @@ echo "Done with oh my zsh installation"
 
 ####### begin tmux installation #######
 echo "Installing tmux"
-apt install tmux
+sudo apt install tmux
 echo "Done with tmux installation"
 ####### end tmux installation #######
 
