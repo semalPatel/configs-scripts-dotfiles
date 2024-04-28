@@ -1,10 +1,11 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 sudo apt-get update
 
 ####### begin oh-my-zsh installation #######
 echo "Installing oh my zsh"
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh) -o get-oh-my-zsh.sh
+sh -c get-oh-my-zsh.sh
 echo "Done with oh my zsh installation"
 ####### end oh-my-zsh installation #######
 
@@ -27,7 +28,7 @@ sudo rm -rf /var/lib/containerd
 
 # install the latest version of docker, includes docker-compose
 curl -fsSL https://get.docker.com -o get-docker.sh
-sudo bash get-docker.sh
+sudo sh get-docker.sh
 
 echo "Done with docker installation"
 ####### end docker installation #######
