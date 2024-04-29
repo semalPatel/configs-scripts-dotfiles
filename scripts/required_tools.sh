@@ -1,7 +1,9 @@
 #!/usr/bin/env sh
 
+####### begin essential linux tools installation #######
 sudo apt-get update
-sudo apt-get install vim
+sudo apt-get install vim xclip
+####### end essential linux tools installation #######
 
 ####### begin tmux installation #######
 echo "Installing tmux"
