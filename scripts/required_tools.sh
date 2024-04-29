@@ -2,12 +2,12 @@
 
 ####### begin essential linux tools installation #######
 sudo apt-get update
-sudo apt-get install vim xclip
+sudo apt-get install -y python3-pip vim xclip
 ####### end essential linux tools installation #######
 
 ####### begin tmux installation #######
 echo "Installing tmux"
-sudo apt install tmux
+sudo apt install -y tmux
 echo "Done with tmux installation"
 ####### end tmux installation #######
 
@@ -31,7 +31,7 @@ echo "Done with docker installation"
 
 ####### begin oh-my-zsh installation #######
 echo "Installing oh my zsh"
-sudo apt install zsh
+sudo apt install -y zsh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 echo "Done with oh my zsh installation"
 ####### end oh-my-zsh installation #######
