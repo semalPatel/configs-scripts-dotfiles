@@ -15,7 +15,7 @@ echo "Done with tmux installation"
 # uninstall previous docker versions if installed
 echo "Installing docker"
 echo "Removing previous installation of docker if present"
-for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do
+for pkg in docker.io docker-doc docker-compose podman-docker containerd runc docker-buildx-plugin docker-ce docker-ce-cli docker-ce-rootless-extras docker-compose-plugin; do
 sudo apt-get purge $pkg;
 done
 echo "Removing images, containers, and volumes"
