@@ -1,0 +1,74 @@
+upstreams:
+  strategy: strict
+  groups:
+    default:
+      # Cloudflare
+      - 1.1.1.1
+      - 1.0.0.1
+      # Quad9
+      - 9.9.9.9
+      - 149.112.112.112
+      # Google
+      - 8.8.8.8
+      - 8.8.4.4
+upstream:
+  default:
+    - tcp-tls:1.1.1.1:853 # Use DoT to connect to Cloudflare
+    - 2606:4700:4700::1111 # And also do that via IPv6
+blocking:
+  blackLists:
+    ads: # These hosts fall in the ads category
+      - https://adaway.org/hosts.txt
+      - https://v.firebog.net/hosts/AdguardDNS.txt
+      - https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews/hosts
+      - https://big.oisd.nl/domainswild
+    suspicious: # I use this category for sus stuff which doesn't fall in any other category
+      - https://v.firebog.net/hosts/static/w3kbl.txt
+      -  # SNIP - Again, head to https://firebog.net
+    tracking: # These hosts are used for tracking, which I want to avoid as hard as I can
+      - https://gitlab.com/quidsup/notrack-blocklists/raw/master/notrack-blocklist.txt
+      - https://v.firebog.net/hosts/Easyprivacy.txt
+      - https://v.firebog.net/hosts/Prigent-Ads.txt
+      -  # SNIP - You get the drill
+    malicious: # These are phising, malware & crypto mining sites
+      - http://phishing.mailscanner.info/phishing.bad.sites.conf
+      - https://v.firebog.net/hosts/Prigent-Crypto.txt
+      -  # SNIP
+  clientGroupsBlock: # Define groups in which clients will be put. If no other group matches, the "default" group will be used
+    default:
+      - ads
+      - suspicious
+      - tracking
+      - malicious
+  whiteLists: # Allow some special hosts which are on some block lists. Unfortunately, you have to allow them per group
+    ads:
+      - |
+        cdn.optimizely.com
+        api2.branch.io
+        s.shopify.com
+        cdn.shopify.com
+      - https://raw.githubusercontent.com/anudeepND/whitelist/master/domains/whitelist.txt
+    tracking:
+      - |
+        cdn.optimizely.com
+        api2.branch.io
+        s.shopify.com
+        cdn.shopify.com
+      - https://raw.githubusercontent.com/anudeepND/whitelist/master/domains/whitelist.txt
+port: 53 # This is the port to use for DNS traffic
+httpPort: 4000 # This is the port Blocky will listen on for the HTTP API, the Prometheus metrics endpoint and DoH, should you use it
+prometheus:
+  enable: yes
+queryLog: # If you don't need a querylog, feel free to skip this
+  type: postgresql
+  target: "user=the-one-from-earlier password=same host=postgres dbname=blocky sslmode=disable TimeZone=Europe/Berlin"
+  logRetentionDays: 90
+caching:
+  minTime: 60s # How long to cache responses at a minimum. If the entry's TTL is shorter, it will get overridden by this value
+  maxItemsCount: 10000 # How many DNS entries to keep in the cache at most. Unless your network is super busy, you probably won't ever have 10000 entries
+  prefetching: yes # If an entry is "hot", proactively keep it in the cache by re-fetching it in the background
+  prefetchMaxItemsCount: 2000 # How many entries to keep hot
+clientLookup:
+  upstream: 192.168.1.1 # Use rDNS to ask the router for client hostnames. This must be the IP address of your DHCP server (usually your router)
+  singleNameOrder: # Make sure to only request the first client name instead of a list
+    - 1
