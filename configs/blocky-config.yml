@@ -35,7 +35,6 @@ blocking:
       - https://v.firebog.net/hosts/Easyprivacy.txt
       - https://v.firebog.net/hosts/Prigent-Ads.txt
     malicious: # These are phising, malware & crypto mining sites
-      - http://phishing.mailscanner.info/phishing.bad.sites.conf
       - https://v.firebog.net/hosts/Prigent-Crypto.txt
   clientGroupsBlock:
     default:
