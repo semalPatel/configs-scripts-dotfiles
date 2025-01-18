@@ -4,6 +4,7 @@ upstreams:
     # accepted: blocking, failOnError, fast
     # default: blocking
     strategy: fast
+  strategy: strict
   groups:
     default:
       # Cloudflare
