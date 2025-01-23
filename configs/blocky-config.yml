@@ -40,11 +40,11 @@ blocking:
   allowlists:
     ads:
       - |
-        wl.spotify.com
+        *.spotify.com
         *.googleoptimize.com
     tracking:
       - |
-        wl.spotify.com
+        *.spotify.com
         *.googleoptimize.com
   clientGroupsBlock:
     default:
