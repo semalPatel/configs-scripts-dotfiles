@@ -42,10 +42,14 @@ blocking:
       - |
         *.spotify.com
         *.googleoptimize.com
+        e.customeriomail.com
+        slickdeals.net
     tracking:
       - |
         *.spotify.com
         *.googleoptimize.com
+        e.customeriomail.com
+        slickdeals.net
   clientGroupsBlock:
     default:
       - ads
