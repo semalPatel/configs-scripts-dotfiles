@@ -61,3 +61,6 @@ ports:
 prometheus:
   enable: true
   path: /metrics
+customDNS:
+  mapping:
+    patels.house: 192.168.1.86
