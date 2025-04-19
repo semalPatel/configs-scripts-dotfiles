@@ -81,3 +81,7 @@ services:
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/actual-budget.png"
         tag: "finance"
         url: "https://actual.patels.space"
+      - name: "Uptime Kuma"
+        logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/uptime-kuma.png"
+        url: "https://uptime.patels.space"
+        type: "UptimeKuma"
