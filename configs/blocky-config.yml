@@ -31,6 +31,7 @@ blocking:
       - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
       - https://big.oisd.nl/domainswild
       - https://v.firebog.net/hosts/AdguardDNS.txt
+      - https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/multi-onlydomains.txt
     tracking: # These hosts are used for tracking, which I want to avoid as hard as I can
       - https://gitlab.com/quidsup/notrack-blocklists/raw/master/notrack-blocklist.txt
       - https://v.firebog.net/hosts/Easyprivacy.txt
