@@ -1,0 +1,92 @@
+http:
+ #region routers 
+  routers:
+    proxmox:
+      entryPoints:
+        - "https"
+      rule: "Host(`proxmox.local.patels.space`)"
+      middlewares:
+        - default-headers
+        - https-redirectscheme
+      tls: {}
+      service: proxmox
+    technitium-dns1:
+      entryPoints:
+        - "https"
+      rule: "Host(`dns1.local.patels.space`)"
+      middlewares:
+        - default-headers
+        - https-redirectscheme
+      tls: {}
+      service: technitium-dns1
+    technitium-dns2:
+      entryPoints:
+        - "https"
+      rule: "Host(`dns2.local.patels.space`)"
+      middlewares:
+        - default-headers
+        - https-redirectscheme
+      tls: {}
+      service: technitium-dns2
+    home-assistant:
+      entryPoints:
+        - "https"
+      rule: "Host(`home-assistant.local.patels.space`)"
+      middlewares:
+        - default-headers
+        - https-redirectscheme
+      tls: {}
+      service: home-assistant
+
+#endregion
+#region services
+  services:
+    proxmox:
+      loadBalancer:
+        servers:
+          - url: "https://192.168.1.9:8006"
+        passHostHeader: true
+    technitium-dns1:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.23:5380/"
+        passHostHeader: true
+    technitium-dns2:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.90:5380/"
+        passHostHeader: true
+    home-assistant:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.56:8123/"
+        passHostHeader: true
+#endregion
+  middlewares:
+    https-redirectscheme:
+      redirectScheme:
+        scheme: https
+        permanent: true
+    default-headers:
+      headers:
+        frameDeny: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 15552000
+        customFrameOptionsValue: SAMEORIGIN
+        customRequestHeaders:
+          X-Forwarded-Proto: https
+
+    default-whitelist:
+      ipAllowList:
+        sourceRange:
+        - "192.168.1.0/24"
+
+    secured:
+      chain:
+        middlewares:
+        - default-whitelist
+        - default-headers
