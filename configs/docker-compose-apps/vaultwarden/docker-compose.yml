@@ -12,7 +12,6 @@ services:
       - "traefik.http.routers.vaultwarden.rule=Host(`vault.local.patels.space`)"
       - "traefik.http.routers.vaultwarden.entrypoints=https"
       - "traefik.http.routers.vaultwarden.tls=true"
-      - "traefik.http.routers.vaultwarden.tls.certresolver=le"
     networks:
       - proxy
 
