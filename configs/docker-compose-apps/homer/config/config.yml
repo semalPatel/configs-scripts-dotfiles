@@ -77,6 +77,10 @@ services:
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/vaultwarden.png"
         tag: "password-manager"
         url: "https://vault.local.patels.space"
+      - name: "File Server"
+        logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/filebrowser.png"
+        tag: "file-server"
+        url: "https://file-server.local.patels.space"
   - name: "Management"
     icon: "fas fa-cog"
     items:
