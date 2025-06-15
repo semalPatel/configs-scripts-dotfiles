@@ -1,5 +1,5 @@
 http:
- #region routers 
+  #region routers
   routers:
     proxmox:
       entryPoints:
@@ -37,9 +37,17 @@ http:
         - https-redirectscheme
       tls: {}
       service: home-assistant
-
-#endregion
-#region services
+    file-server:
+      entryPoints:
+        - "https"
+      rule: "Host(`file-server.local.patels.space`)"
+      middlewares:
+        - default-headers
+        - https-redirectscheme
+      tls: {}
+      service: file-server
+  #endregion
+  #region services
   services:
     proxmox:
       loadBalancer:
@@ -61,7 +69,12 @@ http:
         servers:
           - url: "http://192.168.1.56:8123/"
         passHostHeader: true
-#endregion
+    file-server:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.73:5000/"
+        passHostHeader: true
+  #endregion
   middlewares:
     https-redirectscheme:
       redirectScheme:
@@ -83,10 +96,10 @@ http:
     default-whitelist:
       ipAllowList:
         sourceRange:
-        - "192.168.1.0/24"
+          - "192.168.1.0/24"
 
     secured:
       chain:
         middlewares:
-        - default-whitelist
-        - default-headers
+          - default-whitelist
+          - default-headers
