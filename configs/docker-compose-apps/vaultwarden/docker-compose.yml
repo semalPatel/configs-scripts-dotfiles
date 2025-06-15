@@ -3,15 +3,19 @@ services:
     image: vaultwarden/server:latest
     container_name: vaultwarden
     restart: unless-stopped
-    environment:
-      DOMAIN: "https://vault.local.patels.space"
     volumes:
       - ./vw-data/:/data/
     ports:
-      - 80:80
+      - 1110:80
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.vaultwarden.rule=Host(`vault.local.patels.space`)"
-      - "traefik.http.routers.vaultwarden.entrypoints=websecure"
+      - "traefik.http.routers.vaultwarden.entrypoints=https"
       - "traefik.http.routers.vaultwarden.tls=true"
       - "traefik.http.routers.vaultwarden.tls.certresolver=le"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
