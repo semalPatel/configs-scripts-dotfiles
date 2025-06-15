@@ -19,6 +19,7 @@ providers:
     exposedByDefault: false
   file:
     filename: /config.yml
+    watch: true
 certificatesResolvers:
   cloudflare:
     acme:
