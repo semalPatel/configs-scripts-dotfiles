@@ -72,7 +72,7 @@ services:
       - name: "Traefik Dashboard"
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/traefik.png"
         tag: "proxy"
-        url: "https://traefik-dashboard.patels.space"
+        url: "https://traefik-dashboard.local.patels.space"
       - name: "Home Assistant"
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/home-assistant.png"
         tag: "home-automation"
