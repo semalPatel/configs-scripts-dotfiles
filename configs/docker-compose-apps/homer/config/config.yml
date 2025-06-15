@@ -65,10 +65,6 @@ services:
   - name: "Applications"
     icon: "fas fa-cloud"
     items:
-      - name: "Proxmox VE"
-        logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/proxmox.png"
-        tag: "virtual environment"
-        url: "https://proxmox.local.patels.space"
       - name: "Home Assistant"
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/home-assistant.png"
         tag: "home-automation"
@@ -84,6 +80,10 @@ services:
   - name: "Management"
     icon: "fas fa-cog"
     items:
+      - name: "Proxmox VE"
+        logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/proxmox.png"
+        tag: "virtual environment"
+        url: "https://proxmox.local.patels.space"
       - name: "Primary DNS"
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/technitium.png"
         tag: "dns"
