@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  app:
+    image: ghcr.io/gabe565/castsponsorskip
+    environment:
+      # Set the container timezone
+      # See identifier list at https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+      TZ: PST
+      # CSS_PAUSED_INTERVAL:
+      # CSS_PLAYING_INTERVAL:
+      # CSS_CATEGORIES:
+      # CSS_YOUTUBE_API_KEY:
+      # CSS_MUTE_ADS:
+    network_mode: host
+    restart: always
