@@ -52,6 +52,9 @@ links:
   - name: "Fraidycat"
     icon: "fa-solid fa-rss"
     url: "https://fraidyc.at/s/"
+  - name: "ProxmoxHelperScripts"
+    icon: "fa-solid fa-link"
+    url: "https://community-scripts.github.io/ProxmoxVE/"
   # this will link to a second homer page that will load config from additional-page.yml and keep default config values as in config.yml file
   # see url field and assets/additional-page.yml.dist used in this example:
   #- name: "another page!"
@@ -81,6 +84,10 @@ services:
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/filebrowser.png"
         tag: "file-server"
         url: "https://file-server.local.patels.space"
+      - name: "FreshRSS"
+        logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/freshrss.png"
+        tag: "rss news reading"
+        url: "https://rss.local.patels.space"
   - name: "Management"
     icon: "fas fa-cog"
     items:
