@@ -44,6 +44,8 @@ services:
       POSTGRES_DB: paperless
       POSTGRES_USER: paperless
       POSTGRES_PASSWORD: paperless
+    networks:
+      - proxy
   webserver:
     image: ghcr.io/paperless-ngx/paperless-ngx:latest
     restart: unless-stopped
@@ -74,6 +76,8 @@ services:
       - "traefik.http.routers.paperless.tls=true"
       - "traefik.http.routers.paperless.tls.certresolver=letsencrypt"
       - "traefik.http.services.paperless.loadbalancer.server.port=8000"
+    networks:
+      - proxy
   gotenberg:
     image: docker.io/gotenberg/gotenberg:8.20
     restart: unless-stopped
@@ -83,9 +87,13 @@ services:
       - "gotenberg"
       - "--chromium-disable-javascript=true"
       - "--chromium-allow-list=file:///tmp/.*"
+    networks:
+      - proxy
   tika:
     image: docker.io/apache/tika:latest
     restart: unless-stopped
+    networks:
+      - proxy
 
 networks:
   proxy:
