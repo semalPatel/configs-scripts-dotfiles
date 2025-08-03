@@ -35,6 +35,8 @@ services:
     restart: unless-stopped
     volumes:
       - redisdata:/data
+    networks:
+      - proxy
   db:
     image: docker.io/library/postgres:17
     restart: unless-stopped
