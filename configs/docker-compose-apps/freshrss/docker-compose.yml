@@ -6,9 +6,9 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Etc/UTC
+      - TZ=PST
     volumes:
-      - /path/to/freshrss/config:/config
+      - /config:/config
     ports:
       - 80
     restart: unless-stopped
