@@ -10,6 +10,12 @@ WITH_HOMEBREW=0
 WITH_DOCKER=0
 WITH_SYSTEM_CACHES=0
 ALL_DRIVES=0
+WITH_BROWSER_CACHES=0
+WITH_DEV_CACHES=0
+WITH_XCODE_ARCHIVES=0
+WITH_ROSETTA_CACHE=0
+WITH_LOCAL_SNAPSHOTS=0
+WITH_SIMULATOR_PRUNE=0
 
 MDC_HOME="${MDC_HOME:-$HOME}"
 MDC_TMPDIR="${MDC_TMPDIR:-${TMPDIR:-/tmp}}"
@@ -22,6 +28,7 @@ Safe by default: runs in dry-run mode unless --execute is provided.
 
 Options:
   --dry-run               Print reclaimable targets (default)
+  --dry-run-all           Equivalent to full heavy preview in one flag
   --execute               Perform deletion of approved targets
   --execute-all           Equivalent to full heavy cleanup in one flag
   --level safe|heavy      Cleanup depth (default: safe)
@@ -32,7 +39,13 @@ Heavy-level category toggles:
   --with-python           Include pip/uv caches
   --with-homebrew         Run brew cache cleanup (if brew exists)
   --with-docker           Run docker builder prune (if docker exists)
+  --with-browser-caches   Include browser/webview caches
+  --with-dev-caches       Include Gradle/Maven/Ivy/Cargo/Composer/Playwright/Cypress caches
+  --with-xcode-archives   Include Xcode Archives/Products/ModuleCache and simulator device caches
+  --with-rosetta-cache    Include Rosetta translation cache (/private/var/db/oah)
   --with-system-caches    Include macOS-level caches (/Library, /private/var/*)
+  --with-local-snapshots  Try thinning/deleting APFS local snapshots (tmutil)
+  --with-simulator-prune  Delete unavailable iOS Simulators (xcrun simctl)
   --all-drives            Include mounted volumes under /Volumes when using --with-system-caches
 
   --help                  Show this help
@@ -113,16 +126,26 @@ add_target() {
   TARGETS+=("$1")
 }
 
+add_targets_from_find() {
+  local base="$1"
+  shift
+  [ -d "$base" ] || return 0
+  while IFS= read -r path; do
+    [ -n "$path" ] && add_target "$path"
+  done < <(find "$base" "$@" 2>/dev/null || true)
+}
+
 add_system_targets_for_root() {
   local root="$1"
   root="${root%/}"
-  [ -n "$root" ] || root="/"
+  [ -n "$root" ] || root=""
 
   add_target "$root/Library/Caches"
   add_target "$root/Library/Logs"
   add_target "$root/private/var/folders"
   add_target "$root/private/var/tmp"
   add_target "$root/private/var/log"
+  add_target "$root/Library/Updates"
 }
 
 add_system_targets() {
@@ -156,6 +179,7 @@ build_targets() {
   add_target "$MDC_HOME/Library/Caches"
   add_target "$MDC_HOME/Library/Logs"
   add_target "$MDC_HOME/Library/Application Support/CrashReporter"
+  add_target "$MDC_HOME/Library/WebKit"
   add_target "$MDC_TMPDIR"
 
   if [ "$LEVEL" = "heavy" ]; then
@@ -176,8 +200,45 @@ build_targets() {
       add_target "$MDC_HOME/.cache/uv"
     fi
 
+    if [ "$WITH_BROWSER_CACHES" -eq 1 ]; then
+      add_target "$MDC_HOME/Library/Caches/com.apple.Safari"
+      add_target "$MDC_HOME/Library/Caches/Google/Chrome/Default/Cache"
+      add_targets_from_find "$MDC_HOME/Library/Caches/Firefox/Profiles" -type d -name "cache2"
+      add_targets_from_find "$MDC_HOME/Library/Containers" -type d -path "*/Data/Library/Caches"
+    fi
+
+    if [ "$WITH_DEV_CACHES" -eq 1 ]; then
+      add_target "$MDC_HOME/.gradle/caches"
+      add_target "$MDC_HOME/.m2/repository"
+      add_target "$MDC_HOME/.ivy2/cache"
+      add_target "$MDC_HOME/.cargo/registry"
+      add_target "$MDC_HOME/.cargo/git"
+      add_target "$MDC_HOME/.composer/cache"
+      add_target "$MDC_HOME/.cache/ms-playwright"
+      add_target "$MDC_HOME/Library/Caches/Cypress"
+    fi
+
+    if [ "$WITH_XCODE_ARCHIVES" -eq 1 ]; then
+      add_target "$MDC_HOME/Library/Developer/Xcode/Archives"
+      add_target "$MDC_HOME/Library/Developer/Xcode/Products"
+      add_target "$MDC_HOME/Library/Developer/Xcode/ModuleCache.noindex"
+      add_targets_from_find "$MDC_HOME/Library/Developer/CoreSimulator/Devices" -type d -path "*/data/Library/Caches"
+    fi
+
     if [ "$WITH_SYSTEM_CACHES" -eq 1 ]; then
       add_system_targets
+    fi
+
+    if [ "$WITH_ROSETTA_CACHE" -eq 1 ]; then
+      add_target "/private/var/db/oah"
+      if [ -n "${MDC_SYSTEM_ROOTS:-}" ]; then
+        local old_ifs="$IFS"
+        IFS=":"
+        for r in $MDC_SYSTEM_ROOTS; do
+          [ -n "$r" ] && add_target "${r%/}/private/var/db/oah"
+        done
+        IFS="$old_ifs"
+      fi
     fi
   fi
 }
@@ -204,11 +265,46 @@ run_tool_cleanups() {
       warn "docker not found; skipping docker cleanup"
     fi
   fi
+
+  if [ "$LEVEL" = "heavy" ] && [ "$WITH_SIMULATOR_PRUNE" -eq 1 ]; then
+    if command -v xcrun >/dev/null 2>&1; then
+      log "Running: xcrun simctl delete unavailable"
+      xcrun simctl delete unavailable >/dev/null 2>&1 || warn "simulator prune failed"
+    else
+      warn "xcrun not found; skipping simulator prune"
+    fi
+  fi
+
+  if [ "$LEVEL" = "heavy" ] && [ "$WITH_LOCAL_SNAPSHOTS" -eq 1 ]; then
+    if command -v tmutil >/dev/null 2>&1; then
+      log "Running: tmutil thinlocalsnapshots / 10000000000 4"
+      tmutil thinlocalsnapshots / 10000000000 4 >/dev/null 2>&1 || warn "snapshot thinning failed"
+    else
+      warn "tmutil not found; skipping local snapshots cleanup"
+    fi
+  fi
 }
 
 parse_args() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
+      --dry-run-all)
+        MODE="dry-run"
+        LEVEL="heavy"
+        WITH_XCODE=1
+        WITH_NODE=1
+        WITH_PYTHON=1
+        WITH_HOMEBREW=1
+        WITH_DOCKER=1
+        WITH_BROWSER_CACHES=1
+        WITH_DEV_CACHES=1
+        WITH_XCODE_ARCHIVES=1
+        WITH_ROSETTA_CACHE=1
+        WITH_SYSTEM_CACHES=1
+        WITH_LOCAL_SNAPSHOTS=1
+        WITH_SIMULATOR_PRUNE=1
+        ALL_DRIVES=1
+        ;;
       --dry-run)
         MODE="dry-run"
         ;;
@@ -223,7 +319,13 @@ parse_args() {
         WITH_PYTHON=1
         WITH_HOMEBREW=1
         WITH_DOCKER=1
+        WITH_BROWSER_CACHES=1
+        WITH_DEV_CACHES=1
+        WITH_XCODE_ARCHIVES=1
+        WITH_ROSETTA_CACHE=1
         WITH_SYSTEM_CACHES=1
+        WITH_LOCAL_SNAPSHOTS=1
+        WITH_SIMULATOR_PRUNE=1
         ALL_DRIVES=1
         ;;
       --level)
@@ -255,8 +357,26 @@ parse_args() {
       --with-docker)
         WITH_DOCKER=1
         ;;
+      --with-browser-caches)
+        WITH_BROWSER_CACHES=1
+        ;;
+      --with-dev-caches)
+        WITH_DEV_CACHES=1
+        ;;
+      --with-xcode-archives)
+        WITH_XCODE_ARCHIVES=1
+        ;;
+      --with-rosetta-cache)
+        WITH_ROSETTA_CACHE=1
+        ;;
       --with-system-caches)
         WITH_SYSTEM_CACHES=1
+        ;;
+      --with-local-snapshots)
+        WITH_LOCAL_SNAPSHOTS=1
+        ;;
+      --with-simulator-prune)
+        WITH_SIMULATOR_PRUNE=1
         ;;
       --all-drives)
         ALL_DRIVES=1

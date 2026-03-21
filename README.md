@@ -23,10 +23,16 @@ One-flag full cleanup:
 sudo scripts/macos_deep_clean.sh --execute-all
 ```
 
-Preview cleanup (default dry-run):
+One-flag full preview:
 
 ```bash
-scripts/macos_deep_clean.sh --level heavy --with-xcode --with-node --with-python --with-homebrew --with-docker --with-system-caches --all-drives
+scripts/macos_deep_clean.sh --dry-run-all
+```
+
+Preview cleanup (equivalent long form):
+
+```bash
+scripts/macos_deep_clean.sh --level heavy --with-xcode --with-node --with-python --with-homebrew --with-docker --with-browser-caches --with-dev-caches --with-xcode-archives --with-rosetta-cache --with-system-caches --with-local-snapshots --with-simulator-prune --all-drives
 ```
 
 Apply cleanup:
@@ -41,3 +47,5 @@ Safety notes:
 - Use dry-run first to inspect estimated reclaimable size.
 - `--with-system-caches` enables OS-level cache locations (`/Library`, `/private/var/*` cache/log/temp targets).
 - `--all-drives` extends OS-level cache targets to mounted volumes in `/Volumes/*`.
+- `--with-dev-caches` includes Gradle/Maven/Ivy/Cargo/Composer/Playwright/Cypress cache locations.
+- `--with-browser-caches` includes Safari/Chrome/Firefox and containerized app cache locations.
