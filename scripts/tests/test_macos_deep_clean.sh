@@ -84,6 +84,16 @@ run_clean() {
   "$CLEAN_SCRIPT" "$@" >/dev/null
 }
 
+run_clean_capture() {
+  local root="$1"
+  shift
+  MDC_ALLOW_NON_DARWIN=1 \
+  MDC_HOME="$root/home" \
+  MDC_TMPDIR="$root/tmpdir" \
+  MDC_SYSTEM_ROOTS="$root/systemA:$root/systemB" \
+  "$CLEAN_SCRIPT" "$@"
+}
+
 if [ ! -f "$CLEAN_SCRIPT" ]; then
   echo "Cleanup script not found yet: $CLEAN_SCRIPT"
   echo "This is expected to fail before implementation."
@@ -157,6 +167,16 @@ assert_missing "$root/systemA/Library/Caches/os/sys.cache"
 assert_missing "$root/systemB/private/var/folders/x/sys.tmp"
 assert_missing "$root/systemA/private/var/db/oah/oah.cache"
 assert_missing "$root/systemA/Library/Updates/U1/u"
+rm -rf "$root"
+
+# 6) report-top-space should print report and not delete
+root="$(mkfixture)"
+output="$(run_clean_capture "$root" --report-top-space --top-limit 3)"
+printf '%s' "$output" | grep -q "Top space report" || fail "expected top space report heading"
+printf '%s' "$output" | grep -q "Top directories under" || fail "expected directories section"
+printf '%s' "$output" | grep -q "Top files under" || fail "expected files section"
+assert_exists "$root/home/.m2/repository/a/m"
+assert_exists "$root/home/Library/Caches/Google/Chrome/Default/Cache/c"
 rm -rf "$root"
 
 echo "PASS: macos deep clean tests"

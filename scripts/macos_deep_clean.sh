@@ -16,6 +16,8 @@ WITH_XCODE_ARCHIVES=0
 WITH_ROSETTA_CACHE=0
 WITH_LOCAL_SNAPSHOTS=0
 WITH_SIMULATOR_PRUNE=0
+REPORT_TOP_SPACE=0
+TOP_LIMIT=20
 
 MDC_HOME="${MDC_HOME:-$HOME}"
 MDC_TMPDIR="${MDC_TMPDIR:-${TMPDIR:-/tmp}}"
@@ -31,6 +33,8 @@ Options:
   --dry-run-all           Equivalent to full heavy preview in one flag
   --execute               Perform deletion of approved targets
   --execute-all           Equivalent to full heavy cleanup in one flag
+  --report-top-space      Print largest directories/files and exit
+  --top-limit N           Number of rows for top-space report (default: 20)
   --level safe|heavy      Cleanup depth (default: safe)
 
 Heavy-level category toggles:
@@ -285,6 +289,33 @@ run_tool_cleanups() {
   fi
 }
 
+report_top_space() {
+  local base="$MDC_HOME"
+  local limit="$TOP_LIMIT"
+
+  log "Top space report:"
+  log "Top directories under $base:"
+
+  {
+    du -x -d 3 "$base" 2>/dev/null || du -x --max-depth=3 "$base" 2>/dev/null || true
+  } | sort -nr | head -n "$limit" | while IFS= read -r row; do
+    [ -n "$row" ] || continue
+    local kib path
+    kib="$(printf '%s\n' "$row" | awk '{print $1+0}')"
+    path="$(printf '%s\n' "$row" | cut -f2-)"
+    log "  $(bytes_to_human_kib "$kib")  $path"
+  done
+
+  log "Top files under $base:"
+  find "$base" -xdev -type f -exec du -k {} + 2>/dev/null | sort -nr | head -n "$limit" | while IFS= read -r row; do
+    [ -n "$row" ] || continue
+    local kib path
+    kib="$(printf '%s\n' "$row" | awk '{print $1+0}')"
+    path="$(printf '%s\n' "$row" | cut -f2-)"
+    log "  $(bytes_to_human_kib "$kib")  $path"
+  done
+}
+
 parse_args() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -327,6 +358,28 @@ parse_args() {
         WITH_LOCAL_SNAPSHOTS=1
         WITH_SIMULATOR_PRUNE=1
         ALL_DRIVES=1
+        ;;
+      --report-top-space)
+        REPORT_TOP_SPACE=1
+        ;;
+      --top-limit)
+        shift
+        [ "$#" -gt 0 ] || { warn "--top-limit requires a value"; usage; exit 1; }
+        case "$1" in
+          ''|*[!0-9]*)
+            warn "Invalid --top-limit value: $1"
+            usage
+            exit 1
+            ;;
+          *)
+            if [ "$1" -lt 1 ]; then
+              warn "--top-limit must be >= 1"
+              usage
+              exit 1
+            fi
+            TOP_LIMIT="$1"
+            ;;
+        esac
         ;;
       --level)
         shift
@@ -398,6 +451,12 @@ parse_args() {
 main() {
   require_macos
   parse_args "$@"
+
+  if [ "$REPORT_TOP_SPACE" -eq 1 ]; then
+    report_top_space
+    exit 0
+  fi
+
   build_targets
 
   log "Mode: $MODE"

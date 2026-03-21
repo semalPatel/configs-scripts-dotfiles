@@ -29,6 +29,12 @@ One-flag full preview:
 scripts/macos_deep_clean.sh --dry-run-all
 ```
 
+Top space report:
+
+```bash
+scripts/macos_deep_clean.sh --report-top-space --top-limit 30
+```
+
 Preview cleanup (equivalent long form):
 
 ```bash
