@@ -12,6 +12,7 @@ WITH_SYSTEM_CACHES=0
 ALL_DRIVES=0
 WITH_BROWSER_CACHES=0
 WITH_DEV_CACHES=0
+WITH_PROJECT_CACHES=0
 WITH_XCODE_ARCHIVES=0
 WITH_ROSETTA_CACHE=0
 WITH_LOCAL_SNAPSHOTS=0
@@ -45,6 +46,7 @@ Heavy-level category toggles:
   --with-docker           Run docker builder prune (if docker exists)
   --with-browser-caches   Include browser/webview caches
   --with-dev-caches       Include Gradle/Maven/Ivy/Cargo/Composer/Playwright/Cypress caches
+  --with-project-caches   Include project-local caches found under scan roots
   --with-xcode-archives   Include Xcode Archives/Products/ModuleCache and simulator device caches
   --with-rosetta-cache    Include Rosetta translation cache (/private/var/db/oah)
   --with-system-caches    Include macOS-level caches (/Library, /private/var/*)
@@ -179,6 +181,69 @@ add_system_targets() {
   done
 }
 
+add_project_targets_for_root() {
+  local root="$1"
+  [ -d "$root" ] || return 0
+
+  local marker project rel
+  while IFS= read -r marker; do
+    [ -n "$marker" ] || continue
+    project="${marker%/*}"
+    [ -d "$project" ] || continue
+
+    for rel in \
+      ".pytest_cache" \
+      ".mypy_cache" \
+      ".ruff_cache" \
+      ".tox" \
+      ".nox" \
+      ".cache" \
+      ".parcel-cache" \
+      ".turbo" \
+      ".next/cache" \
+      ".nuxt" \
+      ".svelte-kit" \
+      ".vite" \
+      "node_modules/.cache" \
+      ".gradle" \
+      "build/.cache"
+    do
+      add_target "$project/$rel"
+    done
+
+    add_targets_from_find "$project" -type d -name "__pycache__"
+    add_targets_from_find "$project" -type d -name ".ipynb_checkpoints"
+  done < <(find "$root" -type d \( -name ".git" -o -name ".hg" -o -name ".svn" \) 2>/dev/null || true)
+}
+
+add_project_targets() {
+  local -a roots=()
+  if [ -n "${MDC_PROJECT_SCAN_ROOTS:-}" ]; then
+    local old_ifs="$IFS"
+    IFS=":"
+    local r
+    for r in $MDC_PROJECT_SCAN_ROOTS; do
+      [ -n "$r" ] && roots+=("$r")
+    done
+    IFS="$old_ifs"
+  else
+    roots+=("$MDC_HOME")
+    if [ "$ALL_DRIVES" -eq 1 ]; then
+      local vol
+      for vol in /Volumes/*; do
+        [ -d "$vol" ] || continue
+        [ -L "$vol" ] && continue
+        roots+=("$vol")
+      done
+    fi
+  fi
+
+  local root
+  for root in "${roots[@]}"; do
+    add_project_targets_for_root "$root"
+  done
+}
+
 build_targets() {
   add_target "$MDC_HOME/Library/Caches"
   add_target "$MDC_HOME/Library/Logs"
@@ -220,6 +285,10 @@ build_targets() {
       add_target "$MDC_HOME/.composer/cache"
       add_target "$MDC_HOME/.cache/ms-playwright"
       add_target "$MDC_HOME/Library/Caches/Cypress"
+    fi
+
+    if [ "$WITH_PROJECT_CACHES" -eq 1 ]; then
+      add_project_targets
     fi
 
     if [ "$WITH_XCODE_ARCHIVES" -eq 1 ]; then
@@ -329,6 +398,7 @@ parse_args() {
         WITH_DOCKER=1
         WITH_BROWSER_CACHES=1
         WITH_DEV_CACHES=1
+        WITH_PROJECT_CACHES=1
         WITH_XCODE_ARCHIVES=1
         WITH_ROSETTA_CACHE=1
         WITH_SYSTEM_CACHES=1
@@ -352,6 +422,7 @@ parse_args() {
         WITH_DOCKER=1
         WITH_BROWSER_CACHES=1
         WITH_DEV_CACHES=1
+        WITH_PROJECT_CACHES=1
         WITH_XCODE_ARCHIVES=1
         WITH_ROSETTA_CACHE=1
         WITH_SYSTEM_CACHES=1
@@ -415,6 +486,9 @@ parse_args() {
         ;;
       --with-dev-caches)
         WITH_DEV_CACHES=1
+        ;;
+      --with-project-caches)
+        WITH_PROJECT_CACHES=1
         ;;
       --with-xcode-archives)
         WITH_XCODE_ARCHIVES=1

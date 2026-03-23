@@ -45,6 +45,13 @@ mkfixture() {
   mkdir -p "$root/systemB/private/var/folders/x"
   mkdir -p "$root/systemA/private/var/db/oah"
   mkdir -p "$root/systemA/Library/Updates/U1"
+  mkdir -p "$root/projectsA/repo1/.git"
+  mkdir -p "$root/projectsA/repo1/.pytest_cache/v"
+  mkdir -p "$root/projectsA/repo1/.next/cache/n1"
+  mkdir -p "$root/projectsA/repo1/pkg/__pycache__"
+  mkdir -p "$root/projectsB/repo2/.git"
+  mkdir -p "$root/projectsB/repo2/.turbo/t1"
+  mkdir -p "$root/projectsB/repo2/node_modules/.cache/nm"
 
   printf 'cache' > "$root/home/Library/Caches/app/file.tmp"
   printf 'log' > "$root/home/Library/Logs/app/log.txt"
@@ -70,6 +77,11 @@ mkfixture() {
   printf 'var' > "$root/systemB/private/var/folders/x/sys.tmp"
   printf 'oah' > "$root/systemA/private/var/db/oah/oah.cache"
   printf 'upd' > "$root/systemA/Library/Updates/U1/u"
+  printf 'pyc' > "$root/projectsA/repo1/pkg/__pycache__/m.pyc"
+  printf 'pytest' > "$root/projectsA/repo1/.pytest_cache/v/p"
+  printf 'next' > "$root/projectsA/repo1/.next/cache/n1/c"
+  printf 'turbo' > "$root/projectsB/repo2/.turbo/t1/t"
+  printf 'nmcache' > "$root/projectsB/repo2/node_modules/.cache/nm/c"
 
   echo "$root"
 }
@@ -81,6 +93,7 @@ run_clean() {
   MDC_HOME="$root/home" \
   MDC_TMPDIR="$root/tmpdir" \
   MDC_SYSTEM_ROOTS="$root/systemA:$root/systemB" \
+  MDC_PROJECT_SCAN_ROOTS="$root/home:$root/projectsA:$root/projectsB" \
   "$CLEAN_SCRIPT" "$@" >/dev/null
 }
 
@@ -91,6 +104,7 @@ run_clean_capture() {
   MDC_HOME="$root/home" \
   MDC_TMPDIR="$root/tmpdir" \
   MDC_SYSTEM_ROOTS="$root/systemA:$root/systemB" \
+  MDC_PROJECT_SCAN_ROOTS="$root/home:$root/projectsA:$root/projectsB" \
   "$CLEAN_SCRIPT" "$@"
 }
 
@@ -131,18 +145,34 @@ run_clean "$root" --execute --level heavy --with-xcode --with-node
 assert_missing "$root/home/Library/Caches/app/file.tmp"
 assert_missing "$root/home/Library/Developer/Xcode/DerivedData/ProjA/a"
 assert_missing "$root/home/.npm/_cacache/node"
+assert_exists "$root/projectsA/repo1/.pytest_cache/v/p"
+assert_exists "$root/projectsA/repo1/.next/cache/n1/c"
+assert_exists "$root/projectsA/repo1/pkg/__pycache__/m.pyc"
+assert_exists "$root/projectsB/repo2/.turbo/t1/t"
+assert_exists "$root/projectsB/repo2/node_modules/.cache/nm/c"
 assert_exists "$root/systemA/Library/Caches/os/sys.cache"
 assert_exists "$root/systemB/private/var/folders/x/sys.tmp"
 rm -rf "$root"
 
-# 4) system cache toggle should clean OS-level cache roots
+# 4) project cache toggle should clean project-level cache roots across scan roots
+root="$(mkfixture)"
+run_clean "$root" --execute --level heavy --with-project-caches
+assert_missing "$root/projectsA/repo1/.pytest_cache/v/p"
+assert_missing "$root/projectsA/repo1/.next/cache/n1/c"
+assert_missing "$root/projectsA/repo1/pkg/__pycache__/m.pyc"
+assert_missing "$root/projectsB/repo2/.turbo/t1/t"
+assert_missing "$root/projectsB/repo2/node_modules/.cache/nm/c"
+assert_exists "$root/home/.npm/_cacache/node"
+rm -rf "$root"
+
+# 5) system cache toggle should clean OS-level cache roots
 root="$(mkfixture)"
 run_clean "$root" --execute --level heavy --with-system-caches
 assert_missing "$root/systemA/Library/Caches/os/sys.cache"
 assert_missing "$root/systemB/private/var/folders/x/sys.tmp"
 rm -rf "$root"
 
-# 5) execute-all should include heavy + all categories and system caches
+# 6) execute-all should include heavy + all categories and system caches
 root="$(mkfixture)"
 run_clean "$root" --execute-all
 assert_missing "$root/home/Library/Caches/app/file.tmp"
@@ -163,13 +193,18 @@ assert_missing "$root/home/Library/Caches/com.apple.Safari/s"
 assert_missing "$root/home/Library/Caches/Google/Chrome/Default/Cache/c"
 assert_missing "$root/home/Library/Caches/Firefox/Profiles/p1/cache2/f"
 assert_missing "$root/home/Library/Containers/com.foo.app/Data/Library/Caches/X/c"
+assert_missing "$root/projectsA/repo1/.pytest_cache/v/p"
+assert_missing "$root/projectsA/repo1/.next/cache/n1/c"
+assert_missing "$root/projectsA/repo1/pkg/__pycache__/m.pyc"
+assert_missing "$root/projectsB/repo2/.turbo/t1/t"
+assert_missing "$root/projectsB/repo2/node_modules/.cache/nm/c"
 assert_missing "$root/systemA/Library/Caches/os/sys.cache"
 assert_missing "$root/systemB/private/var/folders/x/sys.tmp"
 assert_missing "$root/systemA/private/var/db/oah/oah.cache"
 assert_missing "$root/systemA/Library/Updates/U1/u"
 rm -rf "$root"
 
-# 6) report-top-space should print report and not delete
+# 7) report-top-space should print report and not delete
 root="$(mkfixture)"
 output="$(run_clean_capture "$root" --report-top-space --top-limit 3)"
 printf '%s' "$output" | grep -q "Top space report" || fail "expected top space report heading"
