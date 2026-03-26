@@ -90,6 +90,10 @@ assert_contains "$output" "dotfiles/.gitconfig -> $home_dir/.gitconfig"
 assert_contains "$output" "dotfiles/.ssh/config -> $home_dir/.ssh/config"
 assert_contains "$output" "dotfiles/.zsh_plugins.txt -> $home_dir/.zsh_plugins.txt"
 assert_absent "$home_dir/.zshrc"
+assert_contains "$(cat "$REPO_ROOT/dotfiles/.zshrc")" 'antidote'
+if grep -Fq 'oh-my-zsh' "$REPO_ROOT/dotfiles/.zshrc"; then
+  fail "expected managed .zshrc to avoid oh-my-zsh"
+fi
 
 copy_output="$(run_bootstrap "$home_dir" --dry-run --copy --platform darwin --package-manager brew)" || fail "bootstrap copy dry-run failed: $copy_output"
 assert_contains "$copy_output" "install-mode: copy"

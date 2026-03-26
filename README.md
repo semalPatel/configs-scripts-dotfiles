@@ -9,6 +9,25 @@ Portable machine bootstrap manifests now live under `configs/`:
 
 Shared bootstrap shell helpers live in `scripts/lib/bootstrap_common.sh`.
 
+Bootstrap a machine from this repo with:
+
+```bash
+sh scripts/required_tools.sh --dry-run
+sh scripts/required_tools.sh --apply
+```
+
+Use `--copy` if you want managed files copied into place instead of symlinked.
+
+##### Zsh Migration
+
+The managed shell setup now uses `plain zsh + antidote` instead of `oh-my-zsh`.
+
+- `dotfiles/.zshrc` loads `antidote` and the plugin list from `dotfiles/.zsh_plugins.txt`
+- the prompt is provided by `pure`
+- managed config should not reference `~/.oh-my-zsh`
+
+If an older machine still has `~/.oh-my-zsh`, you can leave it in place during migration, then remove or archive it after confirming the new managed `~/.zshrc` starts cleanly.
+
 ##### Capture Current Userspace
 
 Use `scripts/capture_userspace.sh` to refresh the managed dotfiles from the current machine:
