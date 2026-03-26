@@ -9,6 +9,16 @@ Portable machine bootstrap manifests now live under `configs/`:
 
 Shared bootstrap shell helpers live in `scripts/lib/bootstrap_common.sh`.
 
+##### Capture Current Userspace
+
+Use `scripts/capture_userspace.sh` to refresh the managed dotfiles from the current machine:
+
+```bash
+sh scripts/capture_userspace.sh
+```
+
+It captures only the approved files in `~/.zshrc`, `~/.zprofile`, `~/.zshenv`, `~/.gitconfig`, and `~/.ssh/config`, normalizes home-relative paths where possible, and keeps machine-specific SSH includes commented out. For test fixtures or alternate roots, set `CAPTURE_SOURCE_HOME` and `CAPTURE_REPO_ROOT`.
+
 ##### Easily switch JDK Versions
 
 ```java
