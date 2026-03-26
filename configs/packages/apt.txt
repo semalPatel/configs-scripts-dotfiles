@@ -1,0 +1,14 @@
+# Best-effort Debian/Ubuntu package names for the portable bootstrap.
+# GUI apps from the Brewfile such as alacritty, ghostty, joplin, rectangle,
+# monitorcontrol, aerial, and codex are intentionally not mapped here.
+ca-certificates
+curl
+docker-compose-plugin
+docker.io
+git
+gnupg
+python3-pip
+tmux
+vim
+xclip
+zsh

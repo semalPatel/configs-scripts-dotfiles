@@ -1,0 +1,14 @@
+# Best-effort Fedora/RHEL package names for the portable bootstrap.
+# GUI apps from the Brewfile such as alacritty, ghostty, joplin, rectangle,
+# monitorcontrol, aerial, and codex are intentionally not mapped here.
+ca-certificates
+curl
+docker-compose-plugin
+docker
+git
+gnupg2
+python3-pip
+tmux
+vim-enhanced
+xclip
+zsh

@@ -1,0 +1,31 @@
+tap "neurosnap/tap"
+tap "schollz/tap"
+
+# Core developer tooling currently installed on this machine.
+brew "beads"
+brew "colima"
+brew "docker"
+brew "docker-compose", link: false
+brew "go"
+brew "gradle"
+brew "helm"
+brew "kubernetes-cli"
+brew "minikube"
+brew "mkcert"
+brew "neomutt"
+brew "node@22"
+brew "nmap"
+brew "notmuch"
+brew "rustup"
+brew "uv"
+brew "vim"
+brew "yarn"
+
+# GUI and terminal apps that belong to the portable userspace.
+cask "aerial"
+cask "alacritty"
+cask "codex"
+cask "ghostty"
+cask "joplin"
+cask "monitorcontrol"
+cask "rectangle"

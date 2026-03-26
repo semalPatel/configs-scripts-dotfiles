@@ -1,6 +1,14 @@
 # dot-files-scripts
 Collection of scripts as well some config files for repetitive tasks. This is a continuous list.
 
+##### Userspace Bootstrap Inventory
+
+Portable machine bootstrap manifests now live under `configs/`:
+- `configs/Brewfile` for macOS/Homebrew
+- `configs/packages/*.txt` for best-effort Linux package mappings
+
+Shared bootstrap shell helpers live in `scripts/lib/bootstrap_common.sh`.
+
 ##### Easily switch JDK Versions
 
 ```java
