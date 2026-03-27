@@ -6,6 +6,7 @@ Create a portable machine bootstrap workflow that can recreate the current users
 ## Scope
 - Turn `scripts/required_tools.sh` into a cross-platform bootstrap entrypoint.
 - Detect `macOS` and common Linux package managers and install a curated toolset.
+- Provide an interactive installer menu for package-provider and optional tool choices.
 - Capture portable shell, git, SSH, and app config into repo-managed files.
 - Apply repo-managed config to home-relative and XDG-relative destinations.
 - Preserve safe personal identity config such as Git user identity and non-secret SSH config.
@@ -44,12 +45,14 @@ Suggested layout:
 ### 2. Bootstrap Flow
 `required_tools.sh` should:
 1. Resolve the repo root relative to the script location.
-2. Detect platform and package manager.
-3. Install base packages and platform-specific packages.
-4. Install the selected zsh plugin manager if needed.
-5. Create destination directories in the target home directory.
-6. Symlink or copy repo-managed config into target locations.
-7. Print post-install manual notes for anything intentionally excluded.
+2. Detect platform and determine whether the run is interactive.
+3. When interactive, offer installer choices for package provider and optional tools.
+4. When unattended, default to Homebrew on macOS and native Linux managers on Linux, while skipping optional installs.
+5. Install base packages and provider-specific packages.
+6. Install the selected zsh plugin manager if needed.
+7. Create destination directories in the target home directory.
+8. Symlink or copy repo-managed config into target locations.
+9. Print post-install manual notes for anything intentionally excluded.
 
 ### 3. Config Application Model
 Use a declarative mapping in the script for repo-relative source paths to target home-relative destinations. The script should:
@@ -61,8 +64,16 @@ Use a declarative mapping in the script for repo-relative source paths to target
 ### 4. Identity and Safety Model
 - Include Git `user.name` and `user.email` in managed config.
 - Include safe SSH config structure and host aliases.
+- Include SSH multiplexing defaults and ensure the control socket directory exists.
 - Exclude `~/.ssh/id_*`, agent sockets, tokens, and app credentials.
 - Replace source-machine includes such as the Colima SSH include with conditional or portable alternatives.
+
+### 5. Provider and Optional Install Model
+- Treat `Homebrew` and `ZeroBrew` as peer package providers where available.
+- Expose provider selection through an interactive prompt rather than a required CLI flag.
+- Keep optional installs such as `Codex CLI` off by default for unattended runs.
+- Make `Git` part of the core setup rather than an optional package.
+- Apply additional safe Git defaults after install, such as default branch name and credential helper configuration when supported.
 
 ## Zsh Direction
 Replace `oh-my-zsh` with `plain zsh + antidote`.
@@ -87,6 +98,8 @@ Expected shell structure:
 
 ## Verification
 - Run the bootstrap in dry-run and apply mode on the current machine.
+- Verify interactive selection and unattended defaults both work.
 - Verify generated links and expected file targets under `$HOME`.
 - Verify zsh startup on a clean shell.
 - Verify package installation branch selection on macOS and at least one Linux path.
+- Verify Git setup and SSH multiplexing directory/config are applied.

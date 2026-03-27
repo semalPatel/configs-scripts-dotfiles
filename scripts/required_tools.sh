@@ -12,6 +12,8 @@ ACTION="apply"
 INSTALL_MODE="link"
 PLATFORM_OVERRIDE=""
 PACKAGE_MANAGER_OVERRIDE=""
+SELECTED_PROVIDER=""
+OPTIONAL_CODEX="no"
 
 usage() {
   cat <<EOF
@@ -22,7 +24,7 @@ Options:
   --apply
   --copy
   --platform darwin|linux
-  --package-manager brew|apt|dnf|pacman
+  --package-manager brew|zerobrew|apt|dnf|pacman   # internal/testing override
   --help
 EOF
 }
@@ -61,6 +63,10 @@ parse_args() {
   done
 }
 
+is_interactive() {
+  [ "${BOOTSTRAP_ASSUME_TTY:-0}" = "1" ] || { [ -t 0 ] && [ -t 1 ]; }
+}
+
 detect_platform() {
   if [ -n "$PLATFORM_OVERRIDE" ]; then
     printf '%s\n' "$PLATFORM_OVERRIDE"
@@ -69,13 +75,64 @@ detect_platform() {
   fi
 }
 
-detect_package_manager() {
+prompt_provider() {
+  platform=$1
+
+  printf '%s\n' "Select package provider:" >&2
+  printf '%s\n' "  1. Homebrew" >&2
+  printf '%s\n' "  2. ZeroBrew" >&2
+  if [ "$platform" = "linux" ]; then
+    detected_native=$(bootstrap_pkg_manager)
+    case "$detected_native" in
+      apt|dnf|pacman)
+        printf '%s\n' "  3. System package manager ($detected_native)" >&2
+        ;;
+    esac
+  fi
+
+  while :; do
+    printf '%s' "Choice [1]: " >&2
+    IFS= read -r answer || answer=""
+    case "${answer:-1}" in
+      1) printf '%s\n' "brew"; return 0 ;;
+      2) printf '%s\n' "zerobrew"; return 0 ;;
+      3)
+        case "${detected_native:-}" in
+          apt|dnf|pacman) printf '%s\n' "$detected_native"; return 0 ;;
+        esac
+        ;;
+    esac
+    bootstrap_warn "invalid selection: ${answer:-}"
+  done
+}
+
+prompt_optional_codex() {
+  while :; do
+    printf '%s' "Install Codex CLI? [y/N]: " >&2
+    IFS= read -r answer || answer=""
+    case "${answer:-n}" in
+      y|Y|yes|YES) printf '%s\n' "yes"; return 0 ;;
+      n|N|no|NO|"") printf '%s\n' "no"; return 0 ;;
+    esac
+    bootstrap_warn "invalid selection: ${answer:-}"
+  done
+}
+
+detect_provider() {
   if [ -n "$PACKAGE_MANAGER_OVERRIDE" ]; then
     printf '%s\n' "$PACKAGE_MANAGER_OVERRIDE"
-  elif [ "$(detect_platform)" = "darwin" ]; then
-    printf '%s\n' "brew"
+  elif is_interactive; then
+    prompt_provider "$(detect_platform)"
   else
-    bootstrap_pkg_manager
+    printf '%s\n' "brew"
+  fi
+}
+
+detect_optional_codex() {
+  if is_interactive && [ -z "${BOOTSTRAP_SKIP_PROMPTS:-}" ]; then
+    prompt_optional_codex
+  else
+    printf '%s\n' "no"
   fi
 }
 
@@ -136,30 +193,91 @@ ensure_brew() {
   bootstrap_activate_homebrew || bootstrap_fail "Homebrew installation finished but brew is still not on PATH"
 }
 
+ensure_zerobrew() {
+  if bootstrap_has_command zb || bootstrap_activate_zerobrew; then
+    return 0
+  fi
+
+  if [ "$ACTION" = "dry-run" ]; then
+    bootstrap_log "dry-run: install ZeroBrew"
+    return 0
+  fi
+
+  bootstrap_log "install: ZeroBrew"
+  bootstrap_install_zerobrew
+  bootstrap_activate_zerobrew || bootstrap_fail "ZeroBrew installation finished but zb is still not on PATH"
+}
+
+provider_install_formula() {
+  provider=$1
+  shift
+
+  case "$provider" in
+    brew)
+      ensure_brew
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: brew install $*"
+      else
+        bootstrap_log "install: brew install $*"
+        brew install "$@"
+      fi
+      ;;
+    zerobrew)
+      ensure_zerobrew
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: zb install $*"
+      else
+        bootstrap_log "install: zb install $*"
+        zb install "$@"
+      fi
+      ;;
+    apt)
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: apt install $*"
+      else
+        sudo apt-get install -y "$@"
+      fi
+      ;;
+    dnf)
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: dnf install $*"
+      else
+        sudo dnf install -y "$@"
+      fi
+      ;;
+    pacman)
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: pacman install $*"
+      else
+        sudo pacman -S --noconfirm "$@"
+      fi
+      ;;
+    *)
+      bootstrap_fail "unsupported provider for formula install: $provider"
+      ;;
+  esac
+}
+
+ensure_git() {
+  provider=$1
+
+  if bootstrap_has_command git; then
+    bootstrap_log "skip: git already present"
+    return 0
+  fi
+
+  provider_install_formula "$provider" git
+}
+
 ensure_zsh() {
-  platform=$1
+  provider=$1
 
   if bootstrap_has_command zsh; then
     bootstrap_log "skip: zsh already present"
     return 0
   fi
 
-  case "$platform" in
-    darwin)
-      if [ "$ACTION" = "dry-run" ]; then
-        bootstrap_log "dry-run: brew install zsh"
-      else
-        bootstrap_log "install: brew install zsh"
-        brew install zsh
-      fi
-      ;;
-    linux)
-      bootstrap_warn "skip: zsh installation is expected from the Linux package manifest"
-      ;;
-    *)
-      bootstrap_warn "skip: unsupported platform for zsh bootstrap: $platform"
-      ;;
-  esac
+  provider_install_formula "$provider" zsh
 }
 
 install_brew_packages() {
@@ -172,6 +290,19 @@ install_brew_packages() {
   else
     bootstrap_log "install: brew bundle --file $brewfile"
     brew bundle --file "$brewfile"
+  fi
+}
+
+install_zerobrew_packages() {
+  brewfile="$CONFIGS_DIR/Brewfile"
+
+  [ -f "$brewfile" ] || bootstrap_fail "missing Brewfile: $brewfile"
+  ensure_zerobrew
+  if [ "$ACTION" = "dry-run" ]; then
+    bootstrap_log "dry-run: zb bundle install -f $brewfile"
+  else
+    bootstrap_log "install: zb bundle install -f $brewfile"
+    zb bundle install -f "$brewfile"
   fi
 }
 
@@ -235,6 +366,103 @@ ensure_antidote() {
   git clone --depth 1 https://github.com/mattmc3/antidote.git "$antidote_dir"
 }
 
+setup_git_defaults() {
+  platform=$1
+
+  if [ "$ACTION" = "dry-run" ]; then
+    bootstrap_log "dry-run: git setup"
+    return 0
+  fi
+
+  bootstrap_log "setup: git config init.defaultBranch main"
+  git config --global init.defaultBranch main
+
+  case "$platform" in
+    darwin)
+      if bootstrap_has_command git-credential-osxkeychain; then
+        bootstrap_log "setup: git config credential.helper osxkeychain"
+        git config --global credential.helper osxkeychain
+      fi
+      ;;
+    linux)
+      if bootstrap_has_command git-credential-manager; then
+        bootstrap_log "setup: git config credential.helper manager"
+        git config --global credential.helper manager
+      elif bootstrap_has_command git-credential-manager-core; then
+        bootstrap_log "setup: git config credential.helper manager-core"
+        git config --global credential.helper manager-core
+      fi
+      ;;
+  esac
+
+  if [ -f "$HOME/.ssh/github_noreply.pub" ] && bootstrap_has_command ssh-keygen; then
+    bootstrap_log "setup: git config gpg.format ssh"
+    git config --global gpg.format ssh
+    bootstrap_log "setup: git config user.signingkey $HOME/.ssh/github_noreply.pub"
+    git config --global user.signingkey "$HOME/.ssh/github_noreply.pub"
+    bootstrap_log "setup: git config gpg.ssh.program ssh-keygen"
+    git config --global gpg.ssh.program ssh-keygen
+  fi
+}
+
+install_optional_codex() {
+  provider=$1
+
+  [ "$OPTIONAL_CODEX" = "yes" ] || return 0
+
+  case "$provider" in
+    brew)
+      ensure_brew
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: install Codex CLI"
+      else
+        bootstrap_log "install: brew install --cask codex"
+        brew install --cask codex
+      fi
+      ;;
+    zerobrew)
+      provider_install_formula "$provider" node
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: install Codex CLI"
+        bootstrap_log "dry-run: npm install -g @openai/codex"
+      else
+        bootstrap_log "install: npm install -g @openai/codex"
+        npm install -g @openai/codex
+      fi
+      ;;
+    apt)
+      provider_install_formula "$provider" nodejs npm
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: install Codex CLI"
+        bootstrap_log "dry-run: npm install -g @openai/codex"
+      else
+        bootstrap_log "install: npm install -g @openai/codex"
+        npm install -g @openai/codex
+      fi
+      ;;
+    dnf)
+      provider_install_formula "$provider" nodejs npm
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: install Codex CLI"
+        bootstrap_log "dry-run: npm install -g @openai/codex"
+      else
+        bootstrap_log "install: npm install -g @openai/codex"
+        npm install -g @openai/codex
+      fi
+      ;;
+    pacman)
+      provider_install_formula "$provider" nodejs npm
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: install Codex CLI"
+        bootstrap_log "dry-run: npm install -g @openai/codex"
+      else
+        bootstrap_log "install: npm install -g @openai/codex"
+        npm install -g @openai/codex
+      fi
+      ;;
+  esac
+}
+
 apply_managed_files() {
   apply_target "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
   apply_target "$DOTFILES_DIR/.zprofile" "$HOME/.zprofile"
@@ -248,32 +476,43 @@ main() {
   parse_args "$@"
 
   platform=$(detect_platform)
-  package_manager=$(detect_package_manager)
+  provider=$(detect_provider)
+  OPTIONAL_CODEX=$(detect_optional_codex)
 
   bootstrap_log "mode: $ACTION"
   bootstrap_log "install-mode: $INSTALL_MODE"
   bootstrap_log "platform: $platform"
-  bootstrap_log "package-manager: $package_manager"
+  bootstrap_log "provider: $provider"
+  bootstrap_log "optional-codex: $OPTIONAL_CODEX"
 
   ensure_dir "$HOME/.ssh"
   ensure_dir "$HOME/.ssh/control"
   ensure_dir "$HOME/.config"
 
-  case "$platform:$package_manager" in
+  case "$platform:$provider" in
     darwin:brew)
       install_brew_packages
       ;;
+    darwin:zerobrew|linux:zerobrew)
+      install_zerobrew_packages
+      ;;
+    linux:brew)
+      install_brew_packages
+      ;;
     linux:apt|linux:dnf|linux:pacman)
-      install_linux_packages "$package_manager"
+      install_linux_packages "$provider"
       ;;
     *)
-      bootstrap_fail "unsupported platform/package-manager pair: $platform/$package_manager"
+      bootstrap_fail "unsupported platform/package-manager pair: $platform/$provider"
       ;;
   esac
 
-  ensure_zsh "$platform"
+  ensure_git "$provider"
+  ensure_zsh "$provider"
   ensure_antidote
   apply_managed_files
+  setup_git_defaults "$platform"
+  install_optional_codex "$provider"
 }
 
 main "$@"

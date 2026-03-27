@@ -24,7 +24,6 @@ brew "yarn"
 # GUI and terminal apps that belong to the portable userspace.
 cask "aerial"
 cask "alacritty"
-cask "codex"
 cask "ghostty"
 cask "joplin"
 cask "monitorcontrol"

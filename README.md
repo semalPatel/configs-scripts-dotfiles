@@ -16,7 +16,23 @@ sh scripts/required_tools.sh --dry-run
 sh scripts/required_tools.sh --apply
 ```
 
+When run interactively, the script now offers:
+- package provider selection: `Homebrew` or `ZeroBrew`
+- optional `Codex CLI` install
+
+When run unattended, it defaults to `Homebrew`, skips optional installs, applies the managed Git config, and ensures SSH multiplexing support via `~/.ssh/control` and the managed SSH config.
+
 Use `--copy` if you want managed files copied into place instead of symlinked.
+
+Copy-paste bootstrap for a fresh machine:
+
+```bash
+BOOTSTRAP_DIR="$(mktemp -d)" && \
+curl -fsSL https://github.com/semalPatel/configs-scripts-dotfiles/archive/refs/heads/main.tar.gz | tar -xzf - -C "$BOOTSTRAP_DIR" && \
+sh "$BOOTSTRAP_DIR/configs-scripts-dotfiles-main/scripts/required_tools.sh" --apply
+```
+
+That archive-based flow does not require `git` to already be installed on the target machine.
 
 ##### Zsh Migration
 
@@ -27,6 +43,16 @@ The managed shell setup now uses `plain zsh + antidote` instead of `oh-my-zsh`.
 - managed config should not reference `~/.oh-my-zsh`
 
 If an older machine still has `~/.oh-my-zsh`, you can leave it in place during migration, then remove or archive it after confirming the new managed `~/.zshrc` starts cleanly.
+
+##### Git And SSH
+
+The bootstrap now treats Git as part of core setup:
+- installs Git if needed through the selected provider
+- applies the managed [`dotfiles/.gitconfig`](dotfiles/.gitconfig)
+- configures safe defaults such as `init.defaultBranch`
+- adds credential-helper and SSH-signing defaults when the supporting tools are present
+
+The managed SSH config includes multiplexing defaults and the bootstrap always creates `~/.ssh/control`.
 
 ##### Capture Current Userspace
 

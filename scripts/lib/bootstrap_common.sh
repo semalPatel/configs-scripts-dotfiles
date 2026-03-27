@@ -61,6 +61,18 @@ bootstrap_install_homebrew() {
   NONINTERACTIVE=1 /bin/sh -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
+bootstrap_install_zerobrew() {
+  if bootstrap_has_command zb >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if ! command -v curl >/dev/null 2>&1; then
+    bootstrap_fail "curl is required to install ZeroBrew"
+  fi
+
+  curl -fsSL https://zerobrew.rs/install | bash -s -- --no-modify-path
+}
+
 bootstrap_activate_homebrew() {
   if [ -n "${BOOTSTRAP_MISSING_COMMANDS:-}" ]; then
     case " ${BOOTSTRAP_MISSING_COMMANDS} " in
@@ -79,6 +91,27 @@ bootstrap_activate_homebrew() {
       return 0
     fi
   done
+
+  return 1
+}
+
+bootstrap_activate_zerobrew() {
+  if [ -n "${BOOTSTRAP_MISSING_COMMANDS:-}" ]; then
+    case " ${BOOTSTRAP_MISSING_COMMANDS} " in
+      *" zb "*) return 1 ;;
+    esac
+  fi
+
+  if command -v zb >/dev/null 2>&1; then
+    return 0
+  fi
+
+  zerobrew_bin="${ZEROBREW_BIN:-$HOME/.local/bin}"
+  if [ -x "$zerobrew_bin/zb" ]; then
+    PATH="$zerobrew_bin:$PATH"
+    export PATH
+    return 0
+  fi
 
   return 1
 }
