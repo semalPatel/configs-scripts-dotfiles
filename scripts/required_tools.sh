@@ -16,6 +16,8 @@ SELECTED_PROVIDER=""
 OPTIONAL_CODEX="no"
 OPTIONAL_DOCKER="no"
 OPTIONAL_PODMAN="no"
+ROOT_TARGET_HOME=""
+ROOT_STAGE_REPO=""
 
 usage() {
   cat <<EOF
@@ -161,6 +163,39 @@ prompt_optional_install() {
   done
 }
 
+prompt_confirmation() {
+  prompt_label=$1
+  default_answer=${2:-y}
+
+  while :; do
+    if [ "$default_answer" = "y" ]; then
+      printf '%s' "$prompt_label [Y/n]: " >&2
+    else
+      printf '%s' "$prompt_label [y/N]: " >&2
+    fi
+
+    answer=$(prompt_read)
+    case "${answer:-$default_answer}" in
+      y|Y|yes|YES) printf '%s\n' "yes"; return 0 ;;
+      n|N|no|NO) printf '%s\n' "no"; return 0 ;;
+    esac
+    bootstrap_warn "invalid selection: ${answer:-}"
+  done
+}
+
+prompt_username() {
+  while :; do
+    printf '%s' "Username [dev]: " >&2
+    answer=$(prompt_read)
+    username=${answer:-dev}
+    if bootstrap_validate_username "$username"; then
+      printf '%s\n' "$username"
+      return 0
+    fi
+    bootstrap_warn "invalid username: $username"
+  done
+}
+
 detect_provider() {
   if [ -n "$PACKAGE_MANAGER_OVERRIDE" ]; then
     printf '%s\n' "$PACKAGE_MANAGER_OVERRIDE"
@@ -187,6 +222,187 @@ validate_provider() {
       fi
       ;;
   esac
+}
+
+linux_admin_group() {
+  if command -v getent >/dev/null 2>&1; then
+    if getent group sudo >/dev/null 2>&1; then
+      printf '%s\n' "sudo"
+      return 0
+    fi
+    if getent group wheel >/dev/null 2>&1; then
+      printf '%s\n' "wheel"
+      return 0
+    fi
+  fi
+
+  if grep -q '^sudo:' /etc/group 2>/dev/null; then
+    printf '%s\n' "sudo"
+    return 0
+  fi
+  if grep -q '^wheel:' /etc/group 2>/dev/null; then
+    printf '%s\n' "wheel"
+    return 0
+  fi
+
+  bootstrap_fail "unable to determine Linux admin group (expected sudo or wheel)"
+}
+
+ensure_linux_root_dependencies() {
+  package_manager=$(bootstrap_pkg_manager)
+
+  case "$package_manager" in
+    apt)
+      if ! command -v sudo >/dev/null 2>&1; then
+        if [ "$ACTION" = "dry-run" ]; then
+          bootstrap_log "dry-run: apt install sudo"
+        else
+          apt-get update
+          apt-get install -y sudo
+        fi
+      fi
+      ;;
+    dnf)
+      if ! command -v sudo >/dev/null 2>&1; then
+        if [ "$ACTION" = "dry-run" ]; then
+          bootstrap_log "dry-run: dnf install sudo"
+        else
+          dnf install -y sudo
+        fi
+      fi
+      ;;
+    pacman)
+      if ! command -v sudo >/dev/null 2>&1; then
+        if [ "$ACTION" = "dry-run" ]; then
+          bootstrap_log "dry-run: pacman install sudo"
+        else
+          pacman -S --noconfirm sudo
+        fi
+      fi
+      ;;
+    *)
+      bootstrap_fail "root onboarding requires apt, dnf, or pacman on Linux"
+      ;;
+  esac
+}
+
+rerun_args() {
+  args="--$ACTION"
+  if [ "$INSTALL_MODE" = "copy" ]; then
+    args="$args --copy"
+  fi
+  if [ -n "$PLATFORM_OVERRIDE" ]; then
+    args="$args --platform $PLATFORM_OVERRIDE"
+  fi
+  if [ -n "$PACKAGE_MANAGER_OVERRIDE" ]; then
+    args="$args --package-manager $PACKAGE_MANAGER_OVERRIDE"
+  fi
+
+  printf '%s\n' "$args"
+}
+
+root_stage_repo_for_user() {
+  target_user=$1
+  target_home=$2
+
+  stage_root="$target_home/.local/share/dotfiles-bootstrap"
+  stage_repo="$stage_root/repo"
+
+  if [ "$ACTION" = "dry-run" ]; then
+    bootstrap_log "dry-run: stage bootstrap repo at $stage_repo"
+    ROOT_STAGE_REPO=$stage_repo
+    return 0
+  fi
+
+  target_group=$(id -gn "$target_user")
+  mkdir -p "$stage_root"
+  rm -rf "$stage_repo"
+  cp -R "$REPO_ROOT" "$stage_repo"
+  chown -R "$target_user:$target_group" "$stage_root"
+  ROOT_STAGE_REPO=$stage_repo
+}
+
+ensure_linux_user_account() {
+  target_user=$1
+
+  target_shell=$(bootstrap_pick_login_shell)
+  admin_group=$(linux_admin_group)
+
+  if bootstrap_user_exists "$target_user"; then
+    target_home=$(bootstrap_user_home "$target_user")
+    [ -n "$target_home" ] || bootstrap_fail "unable to determine home directory for existing user: $target_user"
+    if [ "$ACTION" = "dry-run" ]; then
+      bootstrap_log "dry-run: user exists, reuse $target_user"
+      bootstrap_log "dry-run: ensure $target_user is in admin group $admin_group"
+    else
+      usermod -aG "$admin_group" "$target_user"
+    fi
+    ROOT_TARGET_HOME=$target_home
+    return 0
+  fi
+
+  target_home="/home/$target_user"
+  if [ "$ACTION" = "dry-run" ]; then
+    bootstrap_log "dry-run: useradd -m -s $target_shell $target_user"
+    bootstrap_log "dry-run: usermod -aG $admin_group $target_user"
+  else
+    useradd -m -s "$target_shell" "$target_user"
+    usermod -aG "$admin_group" "$target_user"
+    bootstrap_log "setup: set a password for $target_user"
+    passwd "$target_user"
+  fi
+
+  ROOT_TARGET_HOME=$target_home
+}
+
+rerun_bootstrap_as_user() {
+  target_user=$1
+  stage_repo=$2
+
+  rerun_flags=$(rerun_args)
+  rerun_script="$stage_repo/scripts/required_tools.sh"
+  rerun_cmd="/bin/sh '$rerun_script' $rerun_flags"
+
+  if [ "$ACTION" = "dry-run" ]; then
+    bootstrap_log "dry-run: su - $target_user -c $rerun_cmd"
+    return 0
+  fi
+
+  bootstrap_log "handoff: rerunning bootstrap as $target_user"
+  su - "$target_user" -c "$rerun_cmd"
+}
+
+handle_root_bootstrap() {
+  platform=$1
+
+  case "$platform" in
+    darwin)
+      bootstrap_fail "run this bootstrap from your normal macOS user account, not as root"
+      ;;
+    linux)
+      ;;
+    *)
+      bootstrap_fail "root onboarding is only supported on Linux"
+      ;;
+  esac
+
+  if ! is_interactive; then
+    bootstrap_fail "this bootstrap must run as a non-root user; rerun interactively as root to create one first"
+  fi
+
+  bootstrap_log "info: bootstrap is running as root and will set up a real userspace account first"
+  if [ "$(prompt_confirmation "Create or reuse a non-root bootstrap user now?" y)" != "yes" ]; then
+    bootstrap_fail "root bootstrap aborted; create a non-root user and rerun the script from that account"
+  fi
+
+  target_user=$(prompt_username)
+  ensure_linux_root_dependencies
+  ensure_linux_user_account "$target_user"
+  root_stage_repo_for_user "$target_user" "$ROOT_TARGET_HOME"
+  rerun_bootstrap_as_user "$target_user" "$ROOT_STAGE_REPO"
+  bootstrap_log "bootstrap complete"
+  bootstrap_log "next-step: start a login shell as $target_user with 'su - $target_user'"
+  exit 0
 }
 
 detect_optional_codex() {
@@ -627,6 +843,9 @@ main() {
   parse_args "$@"
 
   platform=$(detect_platform)
+  if bootstrap_is_root; then
+    handle_root_bootstrap "$platform"
+  fi
   provider=$(detect_provider)
   validate_provider "$provider"
   OPTIONAL_CODEX=$(detect_optional_codex)

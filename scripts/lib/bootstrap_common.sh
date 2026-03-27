@@ -19,6 +19,48 @@ bootstrap_is_root() {
   [ "$(id -u 2>/dev/null || printf '1')" = "0" ]
 }
 
+bootstrap_validate_username() {
+  username=$1
+
+  case "$username" in
+    ""|*[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-]*)
+      return 1
+      ;;
+    -*)
+      return 1
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
+bootstrap_user_exists() {
+  username=$1
+  id "$username" >/dev/null 2>&1
+}
+
+bootstrap_user_home() {
+  username=$1
+
+  if command -v getent >/dev/null 2>&1; then
+    getent passwd "$username" | awk -F: 'NR==1 { print $6 }'
+    return 0
+  fi
+
+  awk -F: -v user="$username" '$1 == user { print $6; exit }' /etc/passwd
+}
+
+bootstrap_pick_login_shell() {
+  if command -v zsh >/dev/null 2>&1; then
+    command -v zsh
+  elif command -v bash >/dev/null 2>&1; then
+    command -v bash
+  else
+    printf '%s\n' "/bin/sh"
+  fi
+}
+
 bootstrap_os_name() {
   case "$(uname -s 2>/dev/null)" in
     Darwin) printf '%s\n' "darwin" ;;

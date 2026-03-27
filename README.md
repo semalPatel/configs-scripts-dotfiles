@@ -23,7 +23,9 @@ When run interactively, the script now offers:
 - optional `Podman` install
 
 Notes:
-- `ZeroBrew` is for non-root users. If you run the bootstrap as `root`, use the system package manager or `Homebrew` instead.
+- On Linux, if you start the bootstrap as `root`, the script will offer to create or reuse a real non-root user, add that user to `sudo`, stage the bootstrap repo into that user’s home, and rerun the userspace setup there.
+- `ZeroBrew` is for non-root users and is selected during the user-owned rerun, not from the initial root onboarding flow.
+- On macOS, run the bootstrap from your normal user account, not as `root`.
 - The script runs in a child shell, so it cannot mutate your current shell session after it exits. After bootstrap finishes, start a new login shell with `exec zsh -l` to load the updated `PATH` and zsh config.
 
 When run unattended, it defaults to the native Linux package manager when one is available, otherwise `Homebrew`; optional installs are skipped. It also applies the managed Git config and ensures SSH multiplexing support via `~/.ssh/control` and the managed SSH config.

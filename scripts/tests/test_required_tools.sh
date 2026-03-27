@@ -210,12 +210,42 @@ assert_contains "$interactive_output" "dry-run: zb install docker docker-compose
 root_bin="$fixture_root/root-bin"
 mkdir -p "$root_bin"
 write_stub "$root_bin/uname" 'printf "%s\n" "Linux"'
-write_stub "$root_bin/id" 'if [ "${1:-}" = "-u" ]; then printf "%s\n" "0"; else /usr/bin/id "$@"; fi'
-write_stub "$root_bin/apt-get" 'exit 0'
-if root_zerobrew_output="$(BOOTSTRAP_ASSUME_TTY=1 HOME="$home_dir" PATH="$root_bin:/usr/bin:/bin" /bin/sh "$BOOTSTRAP_SCRIPT" --dry-run --package-manager zerobrew 2>&1)"; then
-  fail "expected root zerobrew selection to fail"
+write_stub "$root_bin/id" '
+if [ "${1:-}" = "-u" ]; then
+  printf "%s\n" "0"
+  exit 0
 fi
-assert_contains "$root_zerobrew_output" "ZeroBrew cannot be installed as root"
+exit 1'
+write_stub "$root_bin/getent" '
+if [ "${1:-}" = "group" ] && [ "${2:-}" = "sudo" ]; then
+  printf "%s\n" "sudo:x:27:"
+  exit 0
+fi
+exit 2'
+write_stub "$root_bin/apt-get" 'exit 0'
+if root_noninteractive_output="$(run_bootstrap_with_path "$home_dir" "$root_bin" --dry-run 2>&1)"; then
+  fail "expected root noninteractive bootstrap to fail"
+fi
+assert_contains "$root_noninteractive_output" "must run as a non-root user"
+
+root_interactive_output="$(run_bootstrap_interactive "$home_dir" "$root_bin" 'y
+dev
+' --dry-run)" || fail "root interactive dry-run failed: $root_interactive_output"
+assert_contains "$root_interactive_output" "info: bootstrap is running as root"
+assert_contains "$root_interactive_output" "dry-run: useradd -m -s"
+assert_contains "$root_interactive_output" "dry-run: usermod -aG sudo dev"
+assert_contains "$root_interactive_output" "dry-run: stage bootstrap repo at /home/dev/.local/share/dotfiles-bootstrap/repo"
+assert_contains "$root_interactive_output" "dry-run: su - dev -c /bin/sh '/home/dev/.local/share/dotfiles-bootstrap/repo/scripts/required_tools.sh' --dry-run"
+assert_contains "$root_interactive_output" "next-step: start a login shell as dev with 'su - dev'"
+
+root_darwin_bin="$fixture_root/root-darwin-bin"
+mkdir -p "$root_darwin_bin"
+write_stub "$root_darwin_bin/uname" 'printf "%s\n" "Darwin"'
+write_stub "$root_darwin_bin/id" 'if [ "${1:-}" = "-u" ]; then printf "%s\n" "0"; else exit 1; fi'
+if root_darwin_output="$(run_bootstrap_with_path "$home_dir" "$root_darwin_bin" --dry-run 2>&1)"; then
+  fail "expected macOS root bootstrap to fail"
+fi
+assert_contains "$root_darwin_output" "run this bootstrap from your normal macOS user account"
 
 interactive_both_output="$(BOOTSTRAP_MISSING_COMMANDS='docker podman' run_bootstrap_interactive "$home_dir" "$interactive_bin" '1
 n
