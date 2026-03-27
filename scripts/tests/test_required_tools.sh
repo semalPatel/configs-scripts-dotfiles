@@ -93,6 +93,8 @@ assert_contains "$output" "mode: dry-run"
 assert_contains "$output" "install-mode: link"
 assert_contains "$output" "provider: brew"
 assert_contains "$output" "optional-codex: no"
+assert_contains "$output" "optional-docker: no"
+assert_contains "$output" "optional-podman: no"
 assert_contains "$output" "dry-run: brew bundle --file $REPO_ROOT/configs/Brewfile"
 assert_contains "$output" "dry-run: git setup"
 assert_contains "$output" "dotfiles/.zshrc -> $home_dir/.zshrc"
@@ -129,6 +131,53 @@ assert_contains "$linux_output" "platform: linux"
 assert_contains "$linux_output" "provider: apt"
 assert_contains "$linux_output" "dry-run: apt install packages from"
 
+linux_apply_bin="$fixture_root/linux-apply-bin"
+mkdir -p "$linux_apply_bin"
+apt_apply_log="$fixture_root/apt-apply.log"
+write_stub "$linux_apply_bin/uname" 'printf "%s\n" "Linux"'
+write_stub "$linux_apply_bin/sudo" '"$@"'
+write_stub "$linux_apply_bin/apt-get" '
+printf "apt-get %s\n" "$*" >> "'"$apt_apply_log"'"
+if [ "$1" = "update" ]; then
+  exit 0
+fi
+pkg=""
+for arg in "$@"; do
+  case "$arg" in
+    -*) ;;
+    install) ;;
+    *) pkg="$arg" ;;
+  esac
+done
+if [ "$1" = "install" ] && [ "$pkg" = "docker-compose-plugin" ]; then
+  printf "%s\n" "E: Unable to locate package docker-compose-plugin" >&2
+  exit 100
+fi
+if [ "$1" = "install" ] && [ "$pkg" = "docker-compose" ]; then
+  exit 0
+fi
+exit 0'
+write_stub "$linux_apply_bin/git" '
+if [ "$1" = "clone" ]; then
+  for target do :; done
+  mkdir -p "$target"
+  printf "%s\n" "# antidote stub" > "$target/antidote.zsh"
+  exit 0
+fi
+exit 0'
+linux_apply_home="$fixture_root/linux-apply-home"
+mkdir -p "$linux_apply_home"
+linux_apply_output="$(BOOTSTRAP_MISSING_COMMANDS='git zsh' run_bootstrap_interactive "$linux_apply_home" "$linux_apply_bin" '3
+n
+y
+n
+' --apply)" || fail "linux apply failed: $linux_apply_output"
+assert_contains "$linux_apply_output" "warn: apt package unavailable, retrying with fallback docker-compose: docker-compose-plugin"
+assert_contains "$(cat "$apt_apply_log")" "apt-get install -y docker-compose-plugin"
+assert_contains "$(cat "$apt_apply_log")" "apt-get install -y docker-compose"
+assert_file "$linux_apply_home/.gitconfig"
+assert_file "$linux_apply_home/.ssh/config"
+
 darwin_bin="$fixture_root/darwin-bin"
 mkdir -p "$darwin_bin"
 write_stub "$darwin_bin/uname" 'printf "%s\n" "Darwin"'
@@ -143,12 +192,29 @@ mkdir -p "$interactive_bin"
 write_stub "$interactive_bin/uname" 'printf "%s\n" "Darwin"'
 interactive_output="$(run_bootstrap_interactive "$home_dir" "$interactive_bin" '2
 y
+y
+n
 ' --dry-run)" || fail "interactive dry-run failed: $interactive_output"
 assert_contains "$interactive_output" "provider: zerobrew"
 assert_contains "$interactive_output" "optional-codex: yes"
+assert_contains "$interactive_output" "optional-docker: yes"
+assert_contains "$interactive_output" "optional-podman: no"
 assert_contains "$interactive_output" "dry-run: install ZeroBrew"
 assert_contains "$interactive_output" "dry-run: zb bundle install -f $REPO_ROOT/configs/Brewfile"
 assert_contains "$interactive_output" "dry-run: install Codex CLI"
+assert_contains "$interactive_output" "dry-run: zb install docker docker-compose"
+
+interactive_both_output="$(run_bootstrap_interactive "$home_dir" "$interactive_bin" '1
+n
+y
+y
+' --dry-run)" || fail "interactive both dry-run failed: $interactive_both_output"
+assert_contains "$interactive_both_output" "provider: brew"
+assert_contains "$interactive_both_output" "optional-codex: no"
+assert_contains "$interactive_both_output" "optional-docker: yes"
+assert_contains "$interactive_both_output" "optional-podman: yes"
+assert_contains "$interactive_both_output" "dry-run: brew install docker docker-compose"
+assert_contains "$interactive_both_output" "dry-run: brew install podman"
 
 darwin_apply_bin="$fixture_root/darwin-apply-bin"
 mkdir -p "$darwin_apply_bin"

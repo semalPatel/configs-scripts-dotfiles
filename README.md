@@ -19,6 +19,8 @@ sh scripts/required_tools.sh --apply
 When run interactively, the script now offers:
 - package provider selection: `Homebrew` or `ZeroBrew`
 - optional `Codex CLI` install
+- optional `Docker` install
+- optional `Podman` install
 
 When run unattended, it defaults to the native Linux package manager when one is available, otherwise `Homebrew`; optional installs are skipped. It also applies the managed Git config and ensures SSH multiplexing support via `~/.ssh/control` and the managed SSH config.
 

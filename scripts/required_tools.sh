@@ -14,6 +14,8 @@ PLATFORM_OVERRIDE=""
 PACKAGE_MANAGER_OVERRIDE=""
 SELECTED_PROVIDER=""
 OPTIONAL_CODEX="no"
+OPTIONAL_DOCKER="no"
+OPTIONAL_PODMAN="no"
 
 usage() {
   cat <<EOF
@@ -118,6 +120,20 @@ prompt_optional_codex() {
   done
 }
 
+prompt_optional_install() {
+  prompt_label=$1
+
+  while :; do
+    printf '%s' "Install $prompt_label? [y/N]: " >&2
+    IFS= read -r answer || answer=""
+    case "${answer:-n}" in
+      y|Y|yes|YES) printf '%s\n' "yes"; return 0 ;;
+      n|N|no|NO|"") printf '%s\n' "no"; return 0 ;;
+    esac
+    bootstrap_warn "invalid selection: ${answer:-}"
+  done
+}
+
 detect_provider() {
   if [ -n "$PACKAGE_MANAGER_OVERRIDE" ]; then
     printf '%s\n' "$PACKAGE_MANAGER_OVERRIDE"
@@ -137,6 +153,22 @@ detect_provider() {
 detect_optional_codex() {
   if is_interactive && [ -z "${BOOTSTRAP_SKIP_PROMPTS:-}" ]; then
     prompt_optional_codex
+  else
+    printf '%s\n' "no"
+  fi
+}
+
+detect_optional_docker() {
+  if is_interactive && [ -z "${BOOTSTRAP_SKIP_PROMPTS:-}" ]; then
+    prompt_optional_install "Docker"
+  else
+    printf '%s\n' "no"
+  fi
+}
+
+detect_optional_podman() {
+  if is_interactive && [ -z "${BOOTSTRAP_SKIP_PROMPTS:-}" ]; then
+    prompt_optional_install "Podman"
   else
     printf '%s\n' "no"
   fi
@@ -333,7 +365,16 @@ install_linux_packages() {
     apt)
       command -v apt-get >/dev/null 2>&1 || bootstrap_fail "apt-get is required on apt-based Linux systems"
       sudo apt-get update
-      sudo apt-get install -y "$@"
+      for pkg in "$@"; do
+        if sudo apt-get install -y "$pkg"; then
+          :
+        elif [ "$pkg" = "docker-compose-plugin" ]; then
+          bootstrap_warn "apt package unavailable, retrying with fallback docker-compose: $pkg"
+          sudo apt-get install -y docker-compose || bootstrap_fail "failed to install docker-compose fallback for $pkg"
+        else
+          bootstrap_fail "failed to install apt package: $pkg"
+        fi
+      done
       ;;
     dnf)
       command -v dnf >/dev/null 2>&1 || bootstrap_fail "dnf is required on dnf-based Linux systems"
@@ -469,6 +510,53 @@ install_optional_codex() {
   esac
 }
 
+install_optional_docker() {
+  provider=$1
+
+  [ "$OPTIONAL_DOCKER" = "yes" ] || return 0
+
+  case "$provider" in
+    brew)
+      provider_install_formula "$provider" docker docker-compose
+      ;;
+    zerobrew)
+      provider_install_formula "$provider" docker docker-compose
+      ;;
+    apt)
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: apt install docker.io"
+        bootstrap_log "dry-run: apt install docker-compose-plugin"
+      else
+        sudo apt-get install -y docker.io || bootstrap_fail "failed to install apt package: docker.io"
+        if sudo apt-get install -y docker-compose-plugin; then
+          :
+        else
+          bootstrap_warn "apt package unavailable, retrying with fallback docker-compose: docker-compose-plugin"
+          sudo apt-get install -y docker-compose || bootstrap_fail "failed to install docker-compose fallback for docker-compose-plugin"
+        fi
+      fi
+      ;;
+    dnf)
+      provider_install_formula "$provider" docker docker-compose-plugin
+      ;;
+    pacman)
+      provider_install_formula "$provider" docker docker-compose
+      ;;
+  esac
+}
+
+install_optional_podman() {
+  provider=$1
+
+  [ "$OPTIONAL_PODMAN" = "yes" ] || return 0
+
+  case "$provider" in
+    brew|zerobrew|apt|dnf|pacman)
+      provider_install_formula "$provider" podman
+      ;;
+  esac
+}
+
 apply_managed_files() {
   apply_target "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
   apply_target "$DOTFILES_DIR/.zprofile" "$HOME/.zprofile"
@@ -484,12 +572,16 @@ main() {
   platform=$(detect_platform)
   provider=$(detect_provider)
   OPTIONAL_CODEX=$(detect_optional_codex)
+  OPTIONAL_DOCKER=$(detect_optional_docker)
+  OPTIONAL_PODMAN=$(detect_optional_podman)
 
   bootstrap_log "mode: $ACTION"
   bootstrap_log "install-mode: $INSTALL_MODE"
   bootstrap_log "platform: $platform"
   bootstrap_log "provider: $provider"
   bootstrap_log "optional-codex: $OPTIONAL_CODEX"
+  bootstrap_log "optional-docker: $OPTIONAL_DOCKER"
+  bootstrap_log "optional-podman: $OPTIONAL_PODMAN"
 
   ensure_dir "$HOME/.ssh"
   ensure_dir "$HOME/.ssh/control"
@@ -519,6 +611,8 @@ main() {
   apply_managed_files
   setup_git_defaults "$platform"
   install_optional_codex "$provider"
+  install_optional_docker "$provider"
+  install_optional_podman "$provider"
 }
 
 main "$@"

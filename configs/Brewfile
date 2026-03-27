@@ -4,8 +4,6 @@ tap "schollz/tap"
 # Core developer tooling currently installed on this machine.
 brew "beads"
 brew "colima"
-brew "docker"
-brew "docker-compose", link: false
 brew "go"
 brew "gradle"
 brew "helm"

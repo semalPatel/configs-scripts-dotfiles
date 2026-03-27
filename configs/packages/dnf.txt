@@ -3,8 +3,6 @@
 # monitorcontrol, aerial, and codex are intentionally not mapped here.
 ca-certificates
 curl
-docker-compose-plugin
-docker
 git
 gnupg2
 python3-pip

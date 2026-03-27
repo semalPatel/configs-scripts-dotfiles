@@ -3,7 +3,6 @@
 # monitorcontrol, aerial, and codex are intentionally not mapped here.
 ca-certificates
 curl
-docker
 git
 gnupg
 python-pip
