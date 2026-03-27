@@ -557,6 +557,12 @@ install_optional_podman() {
   esac
 }
 
+print_completion() {
+  bootstrap_log "bootstrap complete"
+  bootstrap_log "summary: provider=$provider codex=$OPTIONAL_CODEX docker=$OPTIONAL_DOCKER podman=$OPTIONAL_PODMAN"
+  bootstrap_log "next-step: exec zsh -l"
+}
+
 apply_managed_files() {
   apply_target "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
   apply_target "$DOTFILES_DIR/.zprofile" "$HOME/.zprofile"
@@ -613,6 +619,7 @@ main() {
   install_optional_codex "$provider"
   install_optional_docker "$provider"
   install_optional_podman "$provider"
+  print_completion
 }
 
 main "$@"
