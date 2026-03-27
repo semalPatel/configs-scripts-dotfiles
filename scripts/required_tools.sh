@@ -372,6 +372,22 @@ rerun_bootstrap_as_user() {
   su - "$target_user" -c "$rerun_cmd"
 }
 
+open_login_shell_as_user() {
+  target_user=$1
+  login_shell=$(bootstrap_pick_login_shell)
+
+  if [ "$ACTION" = "dry-run" ]; then
+    bootstrap_log "dry-run: exec su - $target_user -s $login_shell"
+    return 0
+  fi
+
+  if bootstrap_has_command zsh; then
+    usermod -s "$login_shell" "$target_user"
+  fi
+  bootstrap_log "handoff: opening login shell as $target_user with $login_shell"
+  exec su - "$target_user" -s "$login_shell"
+}
+
 handle_root_bootstrap() {
   platform=$1
 
@@ -401,7 +417,7 @@ handle_root_bootstrap() {
   root_stage_repo_for_user "$target_user" "$ROOT_TARGET_HOME"
   rerun_bootstrap_as_user "$target_user" "$ROOT_STAGE_REPO"
   bootstrap_log "bootstrap complete"
-  bootstrap_log "next-step: start a login shell as $target_user with 'su - $target_user'"
+  open_login_shell_as_user "$target_user"
   exit 0
 }
 

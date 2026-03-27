@@ -24,6 +24,7 @@ When run interactively, the script now offers:
 
 Notes:
 - On Linux, if you start the bootstrap as `root`, the script will offer to create or reuse a real non-root user, add that user to `sudo`, stage the bootstrap repo into that user’s home, and rerun the userspace setup there.
+- After that rerun finishes, the script will hand off directly into a login shell for that user instead of dropping you back into the original root shell.
 - `ZeroBrew` is for non-root users and is selected during the user-owned rerun, not from the initial root onboarding flow.
 - On macOS, run the bootstrap from your normal user account, not as `root`.
 - The script runs in a child shell, so it cannot mutate your current shell session after it exits. After bootstrap finishes, start a new login shell with `exec zsh -l` to load the updated `PATH` and zsh config.

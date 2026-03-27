@@ -236,7 +236,7 @@ assert_contains "$root_interactive_output" "dry-run: useradd -m -s"
 assert_contains "$root_interactive_output" "dry-run: usermod -aG sudo dev"
 assert_contains "$root_interactive_output" "dry-run: stage bootstrap repo at /home/dev/.local/share/dotfiles-bootstrap/repo"
 assert_contains "$root_interactive_output" "dry-run: su - dev -c /bin/sh '/home/dev/.local/share/dotfiles-bootstrap/repo/scripts/required_tools.sh' --dry-run"
-assert_contains "$root_interactive_output" "next-step: start a login shell as dev with 'su - dev'"
+assert_contains "$root_interactive_output" "dry-run: exec su - dev -s"
 
 root_darwin_bin="$fixture_root/root-darwin-bin"
 mkdir -p "$root_darwin_bin"
