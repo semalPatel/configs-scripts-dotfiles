@@ -18,6 +18,10 @@ OPTIONAL_DOCKER="no"
 OPTIONAL_PODMAN="no"
 ROOT_TARGET_HOME=""
 ROOT_STAGE_REPO=""
+ROOT_PHASE_PROVIDER=""
+ROOT_PHASE_OPTIONAL_CODEX="no"
+ROOT_PHASE_OPTIONAL_DOCKER="no"
+ROOT_PHASE_OPTIONAL_PODMAN="no"
 
 usage() {
   cat <<EOF
@@ -197,7 +201,9 @@ prompt_username() {
 }
 
 detect_provider() {
-  if [ -n "$PACKAGE_MANAGER_OVERRIDE" ]; then
+  if [ -n "${BOOTSTRAP_SELECTED_PROVIDER:-}" ]; then
+    printf '%s\n' "$BOOTSTRAP_SELECTED_PROVIDER"
+  elif [ -n "$PACKAGE_MANAGER_OVERRIDE" ]; then
     printf '%s\n' "$PACKAGE_MANAGER_OVERRIDE"
   elif is_interactive; then
     prompt_provider "$(detect_platform)"
@@ -257,8 +263,8 @@ ensure_linux_root_dependencies() {
         if [ "$ACTION" = "dry-run" ]; then
           bootstrap_log "dry-run: apt install sudo"
         else
-          apt-get update
-          apt-get install -y sudo
+          run_privileged_command apt-get update
+          run_privileged_command apt-get install -y sudo
         fi
       fi
       ;;
@@ -267,7 +273,7 @@ ensure_linux_root_dependencies() {
         if [ "$ACTION" = "dry-run" ]; then
           bootstrap_log "dry-run: dnf install sudo"
         else
-          dnf install -y sudo
+          run_privileged_command dnf install -y sudo
         fi
       fi
       ;;
@@ -276,7 +282,7 @@ ensure_linux_root_dependencies() {
         if [ "$ACTION" = "dry-run" ]; then
           bootstrap_log "dry-run: pacman install sudo"
         else
-          pacman -S --noconfirm sudo
+          run_privileged_command pacman -S --noconfirm sudo
         fi
       fi
       ;;
@@ -299,6 +305,26 @@ rerun_args() {
   fi
 
   printf '%s\n' "$args"
+}
+
+use_root_package_phase() {
+  [ "${BOOTSTRAP_SKIP_PACKAGE_SETUP:-0}" = "1" ]
+}
+
+run_privileged_command() {
+  if bootstrap_is_root; then
+    "$@"
+  else
+    sudo "$@"
+  fi
+}
+
+rerun_env_prefix() {
+  env_prefix="BOOTSTRAP_SELECTED_PROVIDER=$ROOT_PHASE_PROVIDER BOOTSTRAP_OPTIONAL_CODEX=$ROOT_PHASE_OPTIONAL_CODEX BOOTSTRAP_OPTIONAL_DOCKER=$ROOT_PHASE_OPTIONAL_DOCKER BOOTSTRAP_OPTIONAL_PODMAN=$ROOT_PHASE_OPTIONAL_PODMAN"
+  if use_root_package_phase; then
+    env_prefix="$env_prefix BOOTSTRAP_SKIP_PACKAGE_SETUP=1"
+  fi
+  printf '%s\n' "$env_prefix"
 }
 
 root_stage_repo_for_user() {
@@ -361,7 +387,8 @@ rerun_bootstrap_as_user() {
 
   rerun_flags=$(rerun_args)
   rerun_script="$stage_repo/scripts/required_tools.sh"
-  rerun_cmd="/bin/sh '$rerun_script' $rerun_flags"
+  rerun_env=$(rerun_env_prefix)
+  rerun_cmd="$rerun_env /bin/sh '$rerun_script' $rerun_flags"
 
   if [ "$ACTION" = "dry-run" ]; then
     bootstrap_log "dry-run: su - $target_user -c $rerun_cmd"
@@ -412,7 +439,28 @@ handle_root_bootstrap() {
   fi
 
   target_user=$(prompt_username)
+  ROOT_PHASE_PROVIDER=$(detect_provider)
+  validate_provider "$ROOT_PHASE_PROVIDER"
+  ROOT_PHASE_OPTIONAL_CODEX=$(detect_optional_codex)
+  ROOT_PHASE_OPTIONAL_DOCKER=$(detect_optional_docker)
+  ROOT_PHASE_OPTIONAL_PODMAN=$(detect_optional_podman)
   ensure_linux_root_dependencies
+  case "$ROOT_PHASE_PROVIDER" in
+    apt|dnf|pacman)
+      provider=$ROOT_PHASE_PROVIDER
+      OPTIONAL_CODEX=$ROOT_PHASE_OPTIONAL_CODEX
+      OPTIONAL_DOCKER=$ROOT_PHASE_OPTIONAL_DOCKER
+      OPTIONAL_PODMAN=$ROOT_PHASE_OPTIONAL_PODMAN
+      install_linux_packages "$provider"
+      ensure_git "$provider"
+      ensure_zsh "$provider"
+      install_optional_codex "$provider"
+      install_optional_docker "$provider"
+      install_optional_podman "$provider"
+      BOOTSTRAP_SKIP_PACKAGE_SETUP=1
+      export BOOTSTRAP_SKIP_PACKAGE_SETUP
+      ;;
+  esac
   ensure_linux_user_account "$target_user"
   root_stage_repo_for_user "$target_user" "$ROOT_TARGET_HOME"
   rerun_bootstrap_as_user "$target_user" "$ROOT_STAGE_REPO"
@@ -422,7 +470,9 @@ handle_root_bootstrap() {
 }
 
 detect_optional_codex() {
-  if is_interactive && [ -z "${BOOTSTRAP_SKIP_PROMPTS:-}" ]; then
+  if [ -n "${BOOTSTRAP_OPTIONAL_CODEX:-}" ]; then
+    printf '%s\n' "$BOOTSTRAP_OPTIONAL_CODEX"
+  elif is_interactive && [ -z "${BOOTSTRAP_SKIP_PROMPTS:-}" ]; then
     prompt_optional_codex
   else
     printf '%s\n' "no"
@@ -430,7 +480,9 @@ detect_optional_codex() {
 }
 
 detect_optional_docker() {
-  if is_interactive && [ -z "${BOOTSTRAP_SKIP_PROMPTS:-}" ]; then
+  if [ -n "${BOOTSTRAP_OPTIONAL_DOCKER:-}" ]; then
+    printf '%s\n' "$BOOTSTRAP_OPTIONAL_DOCKER"
+  elif is_interactive && [ -z "${BOOTSTRAP_SKIP_PROMPTS:-}" ]; then
     prompt_optional_install "Docker"
   else
     printf '%s\n' "no"
@@ -438,7 +490,9 @@ detect_optional_docker() {
 }
 
 detect_optional_podman() {
-  if is_interactive && [ -z "${BOOTSTRAP_SKIP_PROMPTS:-}" ]; then
+  if [ -n "${BOOTSTRAP_OPTIONAL_PODMAN:-}" ]; then
+    printf '%s\n' "$BOOTSTRAP_OPTIONAL_PODMAN"
+  elif is_interactive && [ -z "${BOOTSTRAP_SKIP_PROMPTS:-}" ]; then
     prompt_optional_install "Podman"
   else
     printf '%s\n' "no"
@@ -544,21 +598,21 @@ provider_install_formula() {
       if [ "$ACTION" = "dry-run" ]; then
         bootstrap_log "dry-run: apt install $*"
       else
-        sudo apt-get install -y "$@"
+        run_privileged_command apt-get install -y "$@"
       fi
       ;;
     dnf)
       if [ "$ACTION" = "dry-run" ]; then
         bootstrap_log "dry-run: dnf install $*"
       else
-        sudo dnf install -y "$@"
+        run_privileged_command dnf install -y "$@"
       fi
       ;;
     pacman)
       if [ "$ACTION" = "dry-run" ]; then
         bootstrap_log "dry-run: pacman install $*"
       else
-        sudo pacman -S --noconfirm "$@"
+        run_privileged_command pacman -S --noconfirm "$@"
       fi
       ;;
     *)
@@ -635,13 +689,13 @@ install_linux_packages() {
   case "$package_manager" in
     apt)
       command -v apt-get >/dev/null 2>&1 || bootstrap_fail "apt-get is required on apt-based Linux systems"
-      sudo apt-get update
+      run_privileged_command apt-get update
       for pkg in "$@"; do
-        if sudo apt-get install -y "$pkg"; then
+        if run_privileged_command apt-get install -y "$pkg"; then
           :
         elif [ "$pkg" = "docker-compose-plugin" ]; then
           bootstrap_warn "apt package unavailable, retrying with fallback docker-compose: $pkg"
-          sudo apt-get install -y docker-compose || bootstrap_fail "failed to install docker-compose fallback for $pkg"
+          run_privileged_command apt-get install -y docker-compose || bootstrap_fail "failed to install docker-compose fallback for $pkg"
         else
           bootstrap_fail "failed to install apt package: $pkg"
         fi
@@ -649,11 +703,11 @@ install_linux_packages() {
       ;;
     dnf)
       command -v dnf >/dev/null 2>&1 || bootstrap_fail "dnf is required on dnf-based Linux systems"
-      sudo dnf install -y "$@"
+      run_privileged_command dnf install -y "$@"
       ;;
     pacman)
       command -v pacman >/dev/null 2>&1 || bootstrap_fail "pacman is required on pacman-based Linux systems"
-      sudo pacman -S --noconfirm "$@"
+      run_privileged_command pacman -S --noconfirm "$@"
       ;;
     *)
       bootstrap_fail "unsupported Linux package manager: $package_manager"
@@ -806,12 +860,12 @@ install_optional_docker() {
         bootstrap_log "dry-run: apt install docker.io"
         bootstrap_log "dry-run: apt install docker-compose-plugin"
       else
-        sudo apt-get install -y docker.io || bootstrap_fail "failed to install apt package: docker.io"
-        if sudo apt-get install -y docker-compose-plugin; then
+        run_privileged_command apt-get install -y docker.io || bootstrap_fail "failed to install apt package: docker.io"
+        if run_privileged_command apt-get install -y docker-compose-plugin; then
           :
         else
           bootstrap_warn "apt package unavailable, retrying with fallback docker-compose: docker-compose-plugin"
-          sudo apt-get install -y docker-compose || bootstrap_fail "failed to install docker-compose fallback for docker-compose-plugin"
+          run_privileged_command apt-get install -y docker-compose || bootstrap_fail "failed to install docker-compose fallback for docker-compose-plugin"
         fi
       fi
       ;;
@@ -880,32 +934,40 @@ main() {
   ensure_dir "$HOME/.ssh/control"
   ensure_dir "$HOME/.config"
 
-  case "$platform:$provider" in
-    darwin:brew)
-      install_brew_packages
-      ;;
-    darwin:zerobrew|linux:zerobrew)
-      install_zerobrew_packages
-      ;;
-    linux:brew)
-      install_brew_packages
-      ;;
-    linux:apt|linux:dnf|linux:pacman)
-      install_linux_packages "$provider"
-      ;;
-    *)
-      bootstrap_fail "unsupported platform/package-manager pair: $platform/$provider"
-      ;;
-  esac
+  if use_root_package_phase; then
+    bootstrap_log "skip: system package setup already handled by root bootstrap"
+  else
+    case "$platform:$provider" in
+      darwin:brew)
+        install_brew_packages
+        ;;
+      darwin:zerobrew|linux:zerobrew)
+        install_zerobrew_packages
+        ;;
+      linux:brew)
+        install_brew_packages
+        ;;
+      linux:apt|linux:dnf|linux:pacman)
+        install_linux_packages "$provider"
+        ;;
+      *)
+        bootstrap_fail "unsupported platform/package-manager pair: $platform/$provider"
+        ;;
+    esac
 
-  ensure_git "$provider"
-  ensure_zsh "$provider"
+    ensure_git "$provider"
+    ensure_zsh "$provider"
+  fi
   ensure_antidote
   apply_managed_files
   setup_git_defaults "$platform"
-  install_optional_codex "$provider"
-  install_optional_docker "$provider"
-  install_optional_podman "$provider"
+  if use_root_package_phase; then
+    bootstrap_log "skip: optional package installs already handled by root bootstrap"
+  else
+    install_optional_codex "$provider"
+    install_optional_docker "$provider"
+    install_optional_podman "$provider"
+  fi
   print_completion
 }
 
