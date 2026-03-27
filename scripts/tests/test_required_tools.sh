@@ -230,6 +230,8 @@ assert_contains "$root_noninteractive_output" "must run as a non-root user"
 
 root_interactive_output="$(run_bootstrap_interactive "$home_dir" "$root_bin" 'y
 dev
+2
+n
 n
 n
 ' --dry-run)" || fail "root interactive dry-run failed: $root_interactive_output"
@@ -238,6 +240,8 @@ assert_contains "$root_interactive_output" "dry-run: apt install packages from"
 assert_contains "$root_interactive_output" "dry-run: useradd -m -s"
 assert_contains "$root_interactive_output" "dry-run: usermod -aG sudo dev"
 assert_contains "$root_interactive_output" "dry-run: stage bootstrap repo at /home/dev/.local/share/dotfiles-bootstrap/repo"
+assert_contains "$root_interactive_output" "BOOTSTRAP_SELECTED_PROVIDER=zerobrew"
+assert_contains "$root_interactive_output" "BOOTSTRAP_OPTIONAL_CODEX=no"
 assert_contains "$root_interactive_output" "BOOTSTRAP_OPTIONAL_DOCKER=no"
 assert_contains "$root_interactive_output" "BOOTSTRAP_OPTIONAL_PODMAN=no"
 assert_contains "$root_interactive_output" "BOOTSTRAP_SKIP_PACKAGE_SETUP=1 /bin/sh '/home/dev/.local/share/dotfiles-bootstrap/repo/scripts/required_tools.sh' --dry-run"
@@ -251,6 +255,46 @@ if root_darwin_output="$(run_bootstrap_with_path "$home_dir" "$root_darwin_bin" 
   fail "expected macOS root bootstrap to fail"
 fi
 assert_contains "$root_darwin_output" "run this bootstrap from your normal macOS user account"
+
+reuse_bin="$fixture_root/reuse-bin"
+mkdir -p "$reuse_bin"
+reuse_user_home="$fixture_root/reuse-user-home"
+mkdir -p "$reuse_user_home"
+write_stub "$reuse_bin/uname" 'printf "%s\n" "Linux"'
+write_stub "$reuse_bin/id" '
+if [ "${1:-}" = "-u" ]; then
+  printf "%s\n" "0"
+  exit 0
+fi
+if [ "${1:-}" = "-gn" ] && [ "${2:-}" = "dev" ]; then
+  printf "%s\n" "dev"
+  exit 0
+fi
+if [ "${1:-}" = "dev" ]; then
+  exit 0
+fi
+exit 1'
+write_stub "$reuse_bin/getent" '
+if [ "${1:-}" = "group" ] && [ "${2:-}" = "sudo" ]; then
+  printf "%s\n" "sudo:x:27:"
+  exit 0
+fi
+if [ "${1:-}" = "passwd" ] && [ "${2:-}" = "dev" ]; then
+  printf "%s\n" "dev:x:1000:1000::'"$reuse_user_home"':/bin/zsh"
+  exit 0
+fi
+exit 2'
+write_stub "$reuse_bin/apt-get" 'exit 0'
+write_stub "$reuse_bin/usermod" 'exit 0'
+write_stub "$reuse_bin/chown" 'exit 0'
+reuse_apply_output="$(run_bootstrap_interactive "$home_dir" "$reuse_bin" 'y
+dev
+1
+n
+n
+n
+' --dry-run)" || fail "reuse apply failed: $reuse_apply_output"
+assert_contains "$reuse_apply_output" "dry-run: user exists, reuse dev"
 
 interactive_both_output="$(BOOTSTRAP_MISSING_COMMANDS='docker podman' run_bootstrap_interactive "$home_dir" "$interactive_bin" '1
 n

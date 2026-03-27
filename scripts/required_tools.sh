@@ -18,6 +18,8 @@ OPTIONAL_DOCKER="no"
 OPTIONAL_PODMAN="no"
 ROOT_TARGET_HOME=""
 ROOT_STAGE_REPO=""
+USER_PHASE_PROVIDER=""
+USER_PHASE_OPTIONAL_CODEX="no"
 ROOT_PHASE_OPTIONAL_DOCKER="no"
 ROOT_PHASE_OPTIONAL_PODMAN="no"
 
@@ -137,6 +139,37 @@ prompt_provider() {
             apt|dnf|pacman) printf '%s\n' "$detected_native"; return 0 ;;
           esac
         fi
+        ;;
+    esac
+    bootstrap_warn "invalid selection: ${answer:-}"
+  done
+}
+
+prompt_userspace_provider() {
+  platform=$1
+
+  printf '%s\n' "Select userspace package provider:" >&2
+  printf '%s\n' "  1. Homebrew" >&2
+  printf '%s\n' "  2. ZeroBrew" >&2
+  if [ "$platform" = "linux" ]; then
+    detected_native=$(bootstrap_pkg_manager)
+    case "$detected_native" in
+      apt|dnf|pacman)
+        printf '%s\n' "  3. System package manager ($detected_native)" >&2
+        ;;
+    esac
+  fi
+
+  while :; do
+    printf '%s' "Choice [1]: " >&2
+    answer=$(prompt_read)
+    case "${answer:-1}" in
+      1) printf '%s\n' "brew"; return 0 ;;
+      2) printf '%s\n' "zerobrew"; return 0 ;;
+      3)
+        case "${detected_native:-}" in
+          apt|dnf|pacman) printf '%s\n' "$detected_native"; return 0 ;;
+        esac
         ;;
     esac
     bootstrap_warn "invalid selection: ${answer:-}"
@@ -323,8 +356,11 @@ run_privileged_command() {
 
 rerun_env_prefix() {
   env_prefix=""
-  if [ -n "${BOOTSTRAP_SELECTED_PROVIDER:-}" ]; then
-    env_prefix="BOOTSTRAP_SELECTED_PROVIDER=$BOOTSTRAP_SELECTED_PROVIDER"
+  if [ -n "$USER_PHASE_PROVIDER" ]; then
+    env_prefix="BOOTSTRAP_SELECTED_PROVIDER=$USER_PHASE_PROVIDER"
+  fi
+  if [ -n "$USER_PHASE_OPTIONAL_CODEX" ]; then
+    env_prefix="${env_prefix:+$env_prefix }BOOTSTRAP_OPTIONAL_CODEX=$USER_PHASE_OPTIONAL_CODEX"
   fi
   if [ -n "$ROOT_PHASE_OPTIONAL_DOCKER" ]; then
     env_prefix="${env_prefix:+$env_prefix }BOOTSTRAP_OPTIONAL_DOCKER=$ROOT_PHASE_OPTIONAL_DOCKER"
@@ -372,6 +408,8 @@ ensure_linux_user_account() {
       bootstrap_log "dry-run: user exists, reuse $target_user"
       bootstrap_log "dry-run: ensure $target_user is in admin group $admin_group"
     else
+      bootstrap_log "reuse: existing user $target_user"
+      bootstrap_log "reuse: password unchanged for $target_user"
       usermod -aG "$admin_group" "$target_user"
     fi
     ROOT_TARGET_HOME=$target_home
@@ -383,6 +421,7 @@ ensure_linux_user_account() {
     bootstrap_log "dry-run: useradd -m -s $target_shell $target_user"
     bootstrap_log "dry-run: usermod -aG $admin_group $target_user"
   else
+    bootstrap_log "create: new user $target_user"
     useradd -m -s "$target_shell" "$target_user"
     usermod -aG "$admin_group" "$target_user"
     bootstrap_log "setup: set a password for $target_user"
@@ -450,6 +489,8 @@ handle_root_bootstrap() {
   fi
 
   target_user=$(prompt_username)
+  USER_PHASE_PROVIDER=$(prompt_userspace_provider "$platform")
+  USER_PHASE_OPTIONAL_CODEX=$(detect_optional_codex)
   ROOT_PHASE_OPTIONAL_DOCKER=$(detect_optional_docker)
   ROOT_PHASE_OPTIONAL_PODMAN=$(detect_optional_podman)
   ensure_linux_root_dependencies
