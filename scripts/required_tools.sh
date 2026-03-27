@@ -18,10 +18,6 @@ OPTIONAL_DOCKER="no"
 OPTIONAL_PODMAN="no"
 ROOT_TARGET_HOME=""
 ROOT_STAGE_REPO=""
-USER_PHASE_PROVIDER=""
-USER_PHASE_OPTIONAL_CODEX="no"
-ROOT_PHASE_OPTIONAL_DOCKER="no"
-ROOT_PHASE_OPTIONAL_PODMAN="no"
 
 usage() {
   cat <<EOF
@@ -342,10 +338,6 @@ rerun_args() {
   printf '%s\n' "$args"
 }
 
-use_root_package_phase() {
-  [ "${BOOTSTRAP_SKIP_PACKAGE_SETUP:-0}" = "1" ]
-}
-
 run_privileged_command() {
   if bootstrap_is_root; then
     "$@"
@@ -402,20 +394,8 @@ install_codex_release_binary() {
 
 rerun_env_prefix() {
   env_prefix=""
-  if [ -n "$USER_PHASE_PROVIDER" ]; then
-    env_prefix="BOOTSTRAP_SELECTED_PROVIDER=$USER_PHASE_PROVIDER"
-  fi
-  if [ -n "$USER_PHASE_OPTIONAL_CODEX" ]; then
-    env_prefix="${env_prefix:+$env_prefix }BOOTSTRAP_OPTIONAL_CODEX=$USER_PHASE_OPTIONAL_CODEX"
-  fi
-  if [ -n "$ROOT_PHASE_OPTIONAL_DOCKER" ]; then
-    env_prefix="${env_prefix:+$env_prefix }BOOTSTRAP_OPTIONAL_DOCKER=$ROOT_PHASE_OPTIONAL_DOCKER"
-  fi
-  if [ -n "$ROOT_PHASE_OPTIONAL_PODMAN" ]; then
-    env_prefix="${env_prefix:+$env_prefix }BOOTSTRAP_OPTIONAL_PODMAN=$ROOT_PHASE_OPTIONAL_PODMAN"
-  fi
-  if use_root_package_phase; then
-    env_prefix="${env_prefix:+$env_prefix }BOOTSTRAP_SKIP_PACKAGE_SETUP=1"
+  if is_interactive; then
+    env_prefix="BOOTSTRAP_ASSUME_TTY=1"
   fi
   printf '%s\n' "$env_prefix"
 }
@@ -543,21 +523,6 @@ handle_root_bootstrap() {
   fi
 
   target_user=$(prompt_username)
-  USER_PHASE_PROVIDER=$(prompt_userspace_provider "$platform")
-  USER_PHASE_OPTIONAL_CODEX=$(detect_optional_codex)
-  ROOT_PHASE_OPTIONAL_DOCKER=$(detect_optional_docker)
-  ROOT_PHASE_OPTIONAL_PODMAN=$(detect_optional_podman)
-  ensure_linux_root_dependencies
-  provider=$(bootstrap_pkg_manager)
-  OPTIONAL_DOCKER=$ROOT_PHASE_OPTIONAL_DOCKER
-  OPTIONAL_PODMAN=$ROOT_PHASE_OPTIONAL_PODMAN
-  install_linux_packages "$provider"
-  ensure_git "$provider"
-  ensure_zsh "$provider"
-  install_optional_docker "$provider"
-  install_optional_podman "$provider"
-  BOOTSTRAP_SKIP_PACKAGE_SETUP=1
-  export BOOTSTRAP_SKIP_PACKAGE_SETUP
   ensure_linux_user_account "$target_user"
   root_stage_repo_for_user "$target_user" "$ROOT_TARGET_HOME"
   rerun_bootstrap_as_user "$target_user" "$ROOT_STAGE_REPO"
@@ -1010,40 +975,32 @@ main() {
   ensure_dir "$HOME/.ssh/control"
   ensure_dir "$HOME/.config"
 
-  if use_root_package_phase; then
-    bootstrap_log "skip: system package setup already handled by root bootstrap"
-  else
-    case "$platform:$provider" in
-      darwin:brew)
-        install_brew_packages
-        ;;
-      darwin:zerobrew|linux:zerobrew)
-        install_zerobrew_packages
-        ;;
-      linux:brew)
-        install_brew_packages
-        ;;
-      linux:apt|linux:dnf|linux:pacman)
-        install_linux_packages "$provider"
-        ;;
-      *)
-        bootstrap_fail "unsupported platform/package-manager pair: $platform/$provider"
-        ;;
-    esac
+  case "$platform:$provider" in
+    darwin:brew)
+      install_brew_packages
+      ;;
+    darwin:zerobrew|linux:zerobrew)
+      install_zerobrew_packages
+      ;;
+    linux:brew)
+      install_brew_packages
+      ;;
+    linux:apt|linux:dnf|linux:pacman)
+      install_linux_packages "$provider"
+      ;;
+    *)
+      bootstrap_fail "unsupported platform/package-manager pair: $platform/$provider"
+      ;;
+  esac
 
-    ensure_git "$provider"
-    ensure_zsh "$provider"
-  fi
+  ensure_git "$provider"
+  ensure_zsh "$provider"
   ensure_antidote
   apply_managed_files
   setup_git_defaults "$platform"
   install_optional_codex "$provider"
-  if use_root_package_phase; then
-    bootstrap_log "skip: docker and podman installs already handled by root bootstrap"
-  else
-    install_optional_docker "$provider"
-    install_optional_podman "$provider"
-  fi
+  install_optional_docker "$provider"
+  install_optional_podman "$provider"
   print_completion
 }
 
