@@ -123,6 +123,12 @@ detect_provider() {
     printf '%s\n' "$PACKAGE_MANAGER_OVERRIDE"
   elif is_interactive; then
     prompt_provider "$(detect_platform)"
+  elif [ "$(detect_platform)" = "linux" ]; then
+    detected_native=$(bootstrap_pkg_manager)
+    case "$detected_native" in
+      apt|dnf|pacman) printf '%s\n' "$detected_native" ;;
+      *) printf '%s\n' "brew" ;;
+    esac
   else
     printf '%s\n' "brew"
   fi

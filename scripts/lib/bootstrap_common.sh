@@ -54,11 +54,15 @@ bootstrap_install_homebrew() {
     return 0
   fi
 
+  if ! command -v bash >/dev/null 2>&1; then
+    bootstrap_fail "bash is required to install Homebrew"
+  fi
+
   if ! command -v curl >/dev/null 2>&1; then
     bootstrap_fail "curl is required to install Homebrew"
   fi
 
-  NONINTERACTIVE=1 /bin/sh -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  NONINTERACTIVE=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
 bootstrap_install_zerobrew() {

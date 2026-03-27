@@ -126,8 +126,8 @@ write_stub "$linux_bin/brew" 'exit 0'
 write_stub "$linux_bin/apt-get" 'printf "apt-get %s\n" "$*" >> "'"$fixture_root"'/apt.log"'
 linux_output="$(run_bootstrap_with_path "$home_dir" "$linux_bin" --dry-run)" || fail "linux dry-run failed: $linux_output"
 assert_contains "$linux_output" "platform: linux"
-assert_contains "$linux_output" "provider: brew"
-assert_contains "$linux_output" "dry-run: brew bundle --file $REPO_ROOT/configs/Brewfile"
+assert_contains "$linux_output" "provider: apt"
+assert_contains "$linux_output" "dry-run: apt install packages from"
 
 darwin_bin="$fixture_root/darwin-bin"
 mkdir -p "$darwin_bin"
