@@ -354,6 +354,52 @@ run_privileged_command() {
   fi
 }
 
+codex_release_archive() {
+  platform=$(detect_platform)
+  arch=$(uname -m 2>/dev/null || printf '%s\n' "unknown")
+
+  case "$platform:$arch" in
+    linux:x86_64|linux:amd64) printf '%s\n' "codex-x86_64-unknown-linux-musl.tar.gz" ;;
+    linux:aarch64|linux:arm64) printf '%s\n' "codex-aarch64-unknown-linux-musl.tar.gz" ;;
+    darwin:x86_64) printf '%s\n' "codex-x86_64-apple-darwin.tar.gz" ;;
+    darwin:arm64|darwin:aarch64) printf '%s\n' "codex-aarch64-apple-darwin.tar.gz" ;;
+    *)
+      bootstrap_fail "unsupported platform/architecture for Codex binary: $platform/$arch"
+      ;;
+  esac
+}
+
+install_codex_release_binary() {
+  target_dir="$HOME/.local/bin"
+  target_bin="$target_dir/codex"
+  archive_name=$(codex_release_archive)
+  archive_url="https://github.com/openai/codex/releases/latest/download/$archive_name"
+  archive_tmp=$(mktemp "${TMPDIR:-/tmp}/codex.XXXXXX.tar.gz")
+  extract_dir=$(mktemp -d "${TMPDIR:-/tmp}/codex.XXXXXX")
+
+  cleanup_codex_binary_install() {
+    rm -f "$archive_tmp"
+    rm -rf "$extract_dir"
+  }
+
+  trap cleanup_codex_binary_install EXIT INT TERM
+
+  mkdir -p "$target_dir"
+  bootstrap_log "install: download Codex binary $archive_name"
+  curl -fsSL "$archive_url" -o "$archive_tmp"
+  tar -xzf "$archive_tmp" -C "$extract_dir"
+  if [ -x "$extract_dir/codex" ]; then
+    install -m 755 "$extract_dir/codex" "$target_bin"
+  elif [ -x "$extract_dir/bin/codex" ]; then
+    install -m 755 "$extract_dir/bin/codex" "$target_bin"
+  else
+    bootstrap_fail "downloaded Codex archive did not contain a codex binary"
+  fi
+
+  trap - EXIT INT TERM
+  cleanup_codex_binary_install
+}
+
 rerun_env_prefix() {
   env_prefix=""
   if [ -n "$USER_PHASE_PROVIDER" ]; then
@@ -858,44 +904,12 @@ install_optional_codex() {
         brew install --cask codex
       fi
       ;;
-    zerobrew)
-      provider_install_formula "$provider" node
+    zerobrew|apt|dnf|pacman)
       if [ "$ACTION" = "dry-run" ]; then
         bootstrap_log "dry-run: install Codex CLI"
-        bootstrap_log "dry-run: npm install -g @openai/codex"
+        bootstrap_log "dry-run: install Codex release binary into $HOME/.local/bin/codex"
       else
-        bootstrap_log "install: npm install -g @openai/codex"
-        npm install -g @openai/codex
-      fi
-      ;;
-    apt)
-      provider_install_formula "$provider" nodejs npm
-      if [ "$ACTION" = "dry-run" ]; then
-        bootstrap_log "dry-run: install Codex CLI"
-        bootstrap_log "dry-run: npm install -g @openai/codex"
-      else
-        bootstrap_log "install: npm install -g @openai/codex"
-        npm install -g @openai/codex
-      fi
-      ;;
-    dnf)
-      provider_install_formula "$provider" nodejs npm
-      if [ "$ACTION" = "dry-run" ]; then
-        bootstrap_log "dry-run: install Codex CLI"
-        bootstrap_log "dry-run: npm install -g @openai/codex"
-      else
-        bootstrap_log "install: npm install -g @openai/codex"
-        npm install -g @openai/codex
-      fi
-      ;;
-    pacman)
-      provider_install_formula "$provider" nodejs npm
-      if [ "$ACTION" = "dry-run" ]; then
-        bootstrap_log "dry-run: install Codex CLI"
-        bootstrap_log "dry-run: npm install -g @openai/codex"
-      else
-        bootstrap_log "install: npm install -g @openai/codex"
-        npm install -g @openai/codex
+        install_codex_release_binary
       fi
       ;;
   esac

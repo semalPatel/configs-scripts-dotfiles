@@ -1,17 +1,6 @@
-# ZeroBrew-safe userspace packages.
-# Keep this narrower than Brewfile; GUI casks and some Homebrew-specific formulae
-# do not install cleanly through ZeroBrew.
-beads
-go
-gradle
-helm
-kubernetes-cli
-minikube
-mkcert
-node@22
-nmap
-notmuch
-rustup
+# ZeroBrew-safe minimal userspace packages for Linux/macOS CLI machines.
+# Keep this intentionally small; project-specific toolchains should be installed
+# per project instead of in the default machine bootstrap.
+tmux
 uv
 vim
-yarn

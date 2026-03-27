@@ -5,7 +5,7 @@ Collection of scripts as well some config files for repetitive tasks. This is a 
 
 Portable machine bootstrap manifests now live under `configs/`:
 - `configs/Brewfile` for macOS/Homebrew
-- `configs/packages/zerobrew.txt` for the curated ZeroBrew userspace set
+- `configs/packages/zerobrew.txt` for the curated minimal ZeroBrew userspace set
 - `configs/packages/*.txt` for best-effort Linux package mappings
 
 Shared bootstrap shell helpers live in `scripts/lib/bootstrap_common.sh`.
@@ -31,6 +31,8 @@ Notes:
 - The script runs in a child shell, so it cannot mutate your current shell session after it exits. After bootstrap finishes, start a new login shell with `exec zsh -l` to load the updated `PATH` and zsh config.
 
 When run unattended, it defaults to the native Linux package manager when one is available, otherwise `Homebrew`; optional installs are skipped. It also applies the managed Git config and ensures SSH multiplexing support via `~/.ssh/control` and the managed SSH config.
+
+For Linux/LXC machines, the default package sets are intentionally minimal. Project runtimes and heavy toolchains should be installed per project rather than as part of the base machine bootstrap.
 
 Use `--copy` if you want managed files copied into place instead of symlinked.
 
@@ -61,6 +63,8 @@ The bootstrap now treats Git as part of core setup:
 - applies the managed [`dotfiles/.gitconfig`](dotfiles/.gitconfig)
 - configures safe defaults such as `init.defaultBranch`
 - adds credential-helper and SSH-signing defaults when the supporting tools are present
+
+When selected on non-Homebrew paths, `Codex CLI` is installed from the prebuilt release binary into `~/.local/bin/codex` instead of through `npm`.
 
 The managed SSH config includes multiplexing defaults and the bootstrap always creates `~/.ssh/control`.
 

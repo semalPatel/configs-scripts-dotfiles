@@ -205,6 +205,7 @@ assert_contains "$interactive_output" "optional-podman: no"
 assert_contains "$interactive_output" "dry-run: install ZeroBrew"
 assert_contains "$interactive_output" "dry-run: zerobrew install packages from $REPO_ROOT/configs/packages/zerobrew.txt"
 assert_contains "$interactive_output" "dry-run: install Codex CLI"
+assert_contains "$interactive_output" "dry-run: install Codex release binary into $home_dir/.local/bin/codex"
 assert_contains "$interactive_output" "dry-run: zb install docker docker-compose"
 
 root_bin="$fixture_root/root-bin"
