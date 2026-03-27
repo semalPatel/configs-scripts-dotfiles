@@ -15,6 +15,10 @@ bootstrap_fail() {
   exit 1
 }
 
+bootstrap_is_root() {
+  [ "$(id -u 2>/dev/null || printf '1')" = "0" ]
+}
+
 bootstrap_os_name() {
   case "$(uname -s 2>/dev/null)" in
     Darwin) printf '%s\n' "darwin" ;;

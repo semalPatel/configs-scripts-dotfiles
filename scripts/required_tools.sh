@@ -99,7 +99,11 @@ prompt_provider() {
 
   printf '%s\n' "Select package provider:" >&2
   printf '%s\n' "  1. Homebrew" >&2
-  printf '%s\n' "  2. ZeroBrew" >&2
+  if bootstrap_is_root; then
+    printf '%s\n' "  2. ZeroBrew (disabled for root)" >&2
+  else
+    printf '%s\n' "  2. ZeroBrew" >&2
+  fi
   if [ "$platform" = "linux" ]; then
     detected_native=$(bootstrap_pkg_manager)
     case "$detected_native" in
@@ -114,7 +118,13 @@ prompt_provider() {
     answer=$(prompt_read)
     case "${answer:-1}" in
       1) printf '%s\n' "brew"; return 0 ;;
-      2) printf '%s\n' "zerobrew"; return 0 ;;
+      2)
+        if bootstrap_is_root; then
+          bootstrap_warn "ZeroBrew cannot be installed as root; choose Homebrew or the system package manager"
+        else
+          printf '%s\n' "zerobrew"; return 0
+        fi
+        ;;
       3)
         case "${detected_native:-}" in
           apt|dnf|pacman) printf '%s\n' "$detected_native"; return 0 ;;
@@ -165,6 +175,18 @@ detect_provider() {
   else
     printf '%s\n' "brew"
   fi
+}
+
+validate_provider() {
+  provider=$1
+
+  case "$provider" in
+    zerobrew)
+      if bootstrap_is_root; then
+        bootstrap_fail "ZeroBrew cannot be installed as root; rerun as a non-root user or choose Homebrew/system package manager"
+      fi
+      ;;
+  esac
 }
 
 detect_optional_codex() {
@@ -589,7 +611,7 @@ install_optional_podman() {
 print_completion() {
   bootstrap_log "bootstrap complete"
   bootstrap_log "summary: provider=$provider codex=$OPTIONAL_CODEX docker=$OPTIONAL_DOCKER podman=$OPTIONAL_PODMAN"
-  bootstrap_log "next-step: exec zsh -l"
+  bootstrap_log "next-step: start a new login shell with 'exec zsh -l' to load updated PATH and zsh config"
 }
 
 apply_managed_files() {
@@ -606,6 +628,7 @@ main() {
 
   platform=$(detect_platform)
   provider=$(detect_provider)
+  validate_provider "$provider"
   OPTIONAL_CODEX=$(detect_optional_codex)
   OPTIONAL_DOCKER=$(detect_optional_docker)
   OPTIONAL_PODMAN=$(detect_optional_podman)

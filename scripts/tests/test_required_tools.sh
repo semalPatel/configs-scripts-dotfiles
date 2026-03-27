@@ -104,7 +104,9 @@ assert_contains "$output" "dotfiles/.gitconfig -> $home_dir/.gitconfig"
 assert_contains "$output" "dotfiles/.ssh/config -> $home_dir/.ssh/config"
 assert_contains "$output" "dotfiles/.zsh_plugins.txt -> $home_dir/.zsh_plugins.txt"
 assert_contains "$output" "bootstrap complete"
+assert_contains "$output" "next-step: start a new login shell with 'exec zsh -l' to load updated PATH and zsh config"
 assert_absent "$home_dir/.zshrc"
+assert_contains "$(cat "$REPO_ROOT/dotfiles/.zprofile")" '$HOME/.local/bin'
 assert_contains "$(cat "$REPO_ROOT/dotfiles/.zshrc")" 'antidote'
 if grep -Fq 'oh-my-zsh' "$REPO_ROOT/dotfiles/.zshrc"; then
   fail "expected managed .zshrc to avoid oh-my-zsh"
@@ -204,6 +206,16 @@ assert_contains "$interactive_output" "dry-run: install ZeroBrew"
 assert_contains "$interactive_output" "dry-run: zb bundle install -f $REPO_ROOT/configs/Brewfile"
 assert_contains "$interactive_output" "dry-run: install Codex CLI"
 assert_contains "$interactive_output" "dry-run: zb install docker docker-compose"
+
+root_bin="$fixture_root/root-bin"
+mkdir -p "$root_bin"
+write_stub "$root_bin/uname" 'printf "%s\n" "Linux"'
+write_stub "$root_bin/id" 'if [ "${1:-}" = "-u" ]; then printf "%s\n" "0"; else /usr/bin/id "$@"; fi'
+write_stub "$root_bin/apt-get" 'exit 0'
+if root_zerobrew_output="$(BOOTSTRAP_ASSUME_TTY=1 HOME="$home_dir" PATH="$root_bin:/usr/bin:/bin" /bin/sh "$BOOTSTRAP_SCRIPT" --dry-run --package-manager zerobrew 2>&1)"; then
+  fail "expected root zerobrew selection to fail"
+fi
+assert_contains "$root_zerobrew_output" "ZeroBrew cannot be installed as root"
 
 interactive_both_output="$(BOOTSTRAP_MISSING_COMMANDS='docker podman' run_bootstrap_interactive "$home_dir" "$interactive_bin" '1
 n

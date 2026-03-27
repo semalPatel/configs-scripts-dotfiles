@@ -1,5 +1,6 @@
 typeset -U path PATH
 path=(
+  "$HOME/.local/bin"
   "$HOME/.cargo/bin"
   "$HOME/.antigravity/antigravity/bin"
   /opt/homebrew/bin

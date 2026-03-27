@@ -22,6 +22,10 @@ When run interactively, the script now offers:
 - optional `Docker` install
 - optional `Podman` install
 
+Notes:
+- `ZeroBrew` is for non-root users. If you run the bootstrap as `root`, use the system package manager or `Homebrew` instead.
+- The script runs in a child shell, so it cannot mutate your current shell session after it exits. After bootstrap finishes, start a new login shell with `exec zsh -l` to load the updated `PATH` and zsh config.
+
 When run unattended, it defaults to the native Linux package manager when one is available, otherwise `Homebrew`; optional installs are skipped. It also applies the managed Git config and ensures SSH multiplexing support via `~/.ssh/control` and the managed SSH config.
 
 Use `--copy` if you want managed files copied into place instead of symlinked.
