@@ -230,8 +230,6 @@ assert_contains "$root_noninteractive_output" "must run as a non-root user"
 
 root_interactive_output="$(run_bootstrap_interactive "$home_dir" "$root_bin" 'y
 dev
-2
-n
 n
 n
 ' --dry-run)" || fail "root interactive dry-run failed: $root_interactive_output"
@@ -240,7 +238,8 @@ assert_contains "$root_interactive_output" "dry-run: apt install packages from"
 assert_contains "$root_interactive_output" "dry-run: useradd -m -s"
 assert_contains "$root_interactive_output" "dry-run: usermod -aG sudo dev"
 assert_contains "$root_interactive_output" "dry-run: stage bootstrap repo at /home/dev/.local/share/dotfiles-bootstrap/repo"
-assert_contains "$root_interactive_output" "BOOTSTRAP_SELECTED_PROVIDER=apt"
+assert_contains "$root_interactive_output" "BOOTSTRAP_OPTIONAL_DOCKER=no"
+assert_contains "$root_interactive_output" "BOOTSTRAP_OPTIONAL_PODMAN=no"
 assert_contains "$root_interactive_output" "BOOTSTRAP_SKIP_PACKAGE_SETUP=1 /bin/sh '/home/dev/.local/share/dotfiles-bootstrap/repo/scripts/required_tools.sh' --dry-run"
 assert_contains "$root_interactive_output" "dry-run: exec su - dev -s"
 

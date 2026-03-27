@@ -18,8 +18,6 @@ OPTIONAL_DOCKER="no"
 OPTIONAL_PODMAN="no"
 ROOT_TARGET_HOME=""
 ROOT_STAGE_REPO=""
-ROOT_PHASE_PROVIDER=""
-ROOT_PHASE_OPTIONAL_CODEX="no"
 ROOT_PHASE_OPTIONAL_DOCKER="no"
 ROOT_PHASE_OPTIONAL_PODMAN="no"
 
@@ -324,9 +322,18 @@ run_privileged_command() {
 }
 
 rerun_env_prefix() {
-  env_prefix="BOOTSTRAP_SELECTED_PROVIDER=$ROOT_PHASE_PROVIDER BOOTSTRAP_OPTIONAL_CODEX=$ROOT_PHASE_OPTIONAL_CODEX BOOTSTRAP_OPTIONAL_DOCKER=$ROOT_PHASE_OPTIONAL_DOCKER BOOTSTRAP_OPTIONAL_PODMAN=$ROOT_PHASE_OPTIONAL_PODMAN"
+  env_prefix=""
+  if [ -n "${BOOTSTRAP_SELECTED_PROVIDER:-}" ]; then
+    env_prefix="BOOTSTRAP_SELECTED_PROVIDER=$BOOTSTRAP_SELECTED_PROVIDER"
+  fi
+  if [ -n "$ROOT_PHASE_OPTIONAL_DOCKER" ]; then
+    env_prefix="${env_prefix:+$env_prefix }BOOTSTRAP_OPTIONAL_DOCKER=$ROOT_PHASE_OPTIONAL_DOCKER"
+  fi
+  if [ -n "$ROOT_PHASE_OPTIONAL_PODMAN" ]; then
+    env_prefix="${env_prefix:+$env_prefix }BOOTSTRAP_OPTIONAL_PODMAN=$ROOT_PHASE_OPTIONAL_PODMAN"
+  fi
   if use_root_package_phase; then
-    env_prefix="$env_prefix BOOTSTRAP_SKIP_PACKAGE_SETUP=1"
+    env_prefix="${env_prefix:+$env_prefix }BOOTSTRAP_SKIP_PACKAGE_SETUP=1"
   fi
   printf '%s\n' "$env_prefix"
 }
@@ -443,28 +450,19 @@ handle_root_bootstrap() {
   fi
 
   target_user=$(prompt_username)
-  ROOT_PHASE_PROVIDER=$(detect_provider)
-  validate_provider "$ROOT_PHASE_PROVIDER"
-  ROOT_PHASE_OPTIONAL_CODEX=$(detect_optional_codex)
   ROOT_PHASE_OPTIONAL_DOCKER=$(detect_optional_docker)
   ROOT_PHASE_OPTIONAL_PODMAN=$(detect_optional_podman)
   ensure_linux_root_dependencies
-  case "$ROOT_PHASE_PROVIDER" in
-    apt|dnf|pacman)
-      provider=$ROOT_PHASE_PROVIDER
-      OPTIONAL_CODEX=$ROOT_PHASE_OPTIONAL_CODEX
-      OPTIONAL_DOCKER=$ROOT_PHASE_OPTIONAL_DOCKER
-      OPTIONAL_PODMAN=$ROOT_PHASE_OPTIONAL_PODMAN
-      install_linux_packages "$provider"
-      ensure_git "$provider"
-      ensure_zsh "$provider"
-      install_optional_codex "$provider"
-      install_optional_docker "$provider"
-      install_optional_podman "$provider"
-      BOOTSTRAP_SKIP_PACKAGE_SETUP=1
-      export BOOTSTRAP_SKIP_PACKAGE_SETUP
-      ;;
-  esac
+  provider=$(bootstrap_pkg_manager)
+  OPTIONAL_DOCKER=$ROOT_PHASE_OPTIONAL_DOCKER
+  OPTIONAL_PODMAN=$ROOT_PHASE_OPTIONAL_PODMAN
+  install_linux_packages "$provider"
+  ensure_git "$provider"
+  ensure_zsh "$provider"
+  install_optional_docker "$provider"
+  install_optional_podman "$provider"
+  BOOTSTRAP_SKIP_PACKAGE_SETUP=1
+  export BOOTSTRAP_SKIP_PACKAGE_SETUP
   ensure_linux_user_account "$target_user"
   root_stage_repo_for_user "$target_user" "$ROOT_TARGET_HOME"
   rerun_bootstrap_as_user "$target_user" "$ROOT_STAGE_REPO"
@@ -965,10 +963,10 @@ main() {
   ensure_antidote
   apply_managed_files
   setup_git_defaults "$platform"
+  install_optional_codex "$provider"
   if use_root_package_phase; then
-    bootstrap_log "skip: optional package installs already handled by root bootstrap"
+    bootstrap_log "skip: docker and podman installs already handled by root bootstrap"
   else
-    install_optional_codex "$provider"
     install_optional_docker "$provider"
     install_optional_podman "$provider"
   fi

@@ -38,7 +38,7 @@ Copy-paste bootstrap for a fresh machine:
 ```bash
 BOOTSTRAP_DIR="$(mktemp -d)" && \
 curl -fsSL https://github.com/semalPatel/configs-scripts-dotfiles/archive/refs/heads/main.tar.gz | tar -xzf - -C "$BOOTSTRAP_DIR" && \
-sh "$BOOTSTRAP_DIR/configs-scripts-dotfiles-main/scripts/required_tools.sh" --apply
+sh "$BOOTSTRAP_DIR/configs-scripts-dotfiles-main/scripts/required_tools.sh" --apply --copy
 ```
 
 That archive-based flow does not require `git` to already be installed on the target machine.
