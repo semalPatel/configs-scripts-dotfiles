@@ -5,6 +5,7 @@ Collection of scripts as well some config files for repetitive tasks. This is a 
 
 Portable machine bootstrap manifests now live under `configs/`:
 - `configs/Brewfile` for macOS/Homebrew
+- `configs/packages/zerobrew.txt` for the curated ZeroBrew userspace set
 - `configs/packages/*.txt` for best-effort Linux package mappings
 
 Shared bootstrap shell helpers live in `scripts/lib/bootstrap_common.sh`.

@@ -407,10 +407,14 @@ ensure_linux_user_account() {
     if [ "$ACTION" = "dry-run" ]; then
       bootstrap_log "dry-run: user exists, reuse $target_user"
       bootstrap_log "dry-run: ensure $target_user is in admin group $admin_group"
+      bootstrap_log "dry-run: chown -R $target_user:$target_user $target_home"
     else
       bootstrap_log "reuse: existing user $target_user"
       bootstrap_log "reuse: password unchanged for $target_user"
       usermod -aG "$admin_group" "$target_user"
+      mkdir -p "$target_home"
+      chown -R "$target_user:$target_user" "$target_home"
+      chmod 755 "$target_home"
     fi
     ROOT_TARGET_HOME=$target_home
     return 0
@@ -420,10 +424,14 @@ ensure_linux_user_account() {
   if [ "$ACTION" = "dry-run" ]; then
     bootstrap_log "dry-run: useradd -m -s $target_shell $target_user"
     bootstrap_log "dry-run: usermod -aG $admin_group $target_user"
+    bootstrap_log "dry-run: chown -R $target_user:$target_user $target_home"
   else
     bootstrap_log "create: new user $target_user"
     useradd -m -s "$target_shell" "$target_user"
     usermod -aG "$admin_group" "$target_user"
+    mkdir -p "$target_home"
+    chown -R "$target_user:$target_user" "$target_home"
+    chmod 755 "$target_home"
     bootstrap_log "setup: set a password for $target_user"
     passwd "$target_user"
   fi
@@ -700,16 +708,27 @@ install_brew_packages() {
 }
 
 install_zerobrew_packages() {
-  brewfile="$CONFIGS_DIR/Brewfile"
+  manifest="$CONFIGS_DIR/packages/zerobrew.txt"
 
-  [ -f "$brewfile" ] || bootstrap_fail "missing Brewfile: $brewfile"
+  [ -f "$manifest" ] || bootstrap_fail "missing ZeroBrew manifest: $manifest"
   ensure_zerobrew
   if [ "$ACTION" = "dry-run" ]; then
-    bootstrap_log "dry-run: zb bundle install -f $brewfile"
-  else
-    bootstrap_log "install: zb bundle install -f $brewfile"
-    zb bundle install -f "$brewfile"
+    bootstrap_log "dry-run: zerobrew install packages from $manifest"
+    return 0
   fi
+
+  set -- $(bootstrap_manifest_packages "$manifest")
+  if [ "$#" -eq 0 ]; then
+    bootstrap_warn "skip: no packages listed in $manifest"
+    return 0
+  fi
+
+  for pkg in "$@"; do
+    bootstrap_log "install: zb install $pkg"
+    if ! zb install "$pkg"; then
+      bootstrap_warn "skip: zerobrew package failed and was skipped: $pkg"
+    fi
+  done
 }
 
 install_linux_packages() {

@@ -1,0 +1,17 @@
+# ZeroBrew-safe userspace packages.
+# Keep this narrower than Brewfile; GUI casks and some Homebrew-specific formulae
+# do not install cleanly through ZeroBrew.
+beads
+go
+gradle
+helm
+kubernetes-cli
+minikube
+mkcert
+node@22
+nmap
+notmuch
+rustup
+uv
+vim
+yarn

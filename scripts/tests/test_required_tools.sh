@@ -203,7 +203,7 @@ assert_contains "$interactive_output" "optional-codex: yes"
 assert_contains "$interactive_output" "optional-docker: yes"
 assert_contains "$interactive_output" "optional-podman: no"
 assert_contains "$interactive_output" "dry-run: install ZeroBrew"
-assert_contains "$interactive_output" "dry-run: zb bundle install -f $REPO_ROOT/configs/Brewfile"
+assert_contains "$interactive_output" "dry-run: zerobrew install packages from $REPO_ROOT/configs/packages/zerobrew.txt"
 assert_contains "$interactive_output" "dry-run: install Codex CLI"
 assert_contains "$interactive_output" "dry-run: zb install docker docker-compose"
 
@@ -239,6 +239,7 @@ assert_contains "$root_interactive_output" "info: bootstrap is running as root"
 assert_contains "$root_interactive_output" "dry-run: apt install packages from"
 assert_contains "$root_interactive_output" "dry-run: useradd -m -s"
 assert_contains "$root_interactive_output" "dry-run: usermod -aG sudo dev"
+assert_contains "$root_interactive_output" "dry-run: chown -R dev:dev /home/dev"
 assert_contains "$root_interactive_output" "dry-run: stage bootstrap repo at /home/dev/.local/share/dotfiles-bootstrap/repo"
 assert_contains "$root_interactive_output" "BOOTSTRAP_SELECTED_PROVIDER=zerobrew"
 assert_contains "$root_interactive_output" "BOOTSTRAP_OPTIONAL_CODEX=no"
@@ -295,6 +296,7 @@ n
 n
 ' --dry-run)" || fail "reuse apply failed: $reuse_apply_output"
 assert_contains "$reuse_apply_output" "dry-run: user exists, reuse dev"
+assert_contains "$reuse_apply_output" "dry-run: chown -R dev:dev $reuse_user_home"
 
 interactive_both_output="$(BOOTSTRAP_MISSING_COMMANDS='docker podman' run_bootstrap_interactive "$home_dir" "$interactive_bin" '1
 n
