@@ -105,16 +105,18 @@ prompt_provider() {
 
   printf '%s\n' "Select package provider:" >&2
   printf '%s\n' "  1. Homebrew" >&2
-  if bootstrap_is_root; then
-    printf '%s\n' "  2. ZeroBrew (disabled for root)" >&2
-  else
+  native_choice=""
+  if ! bootstrap_is_root; then
     printf '%s\n' "  2. ZeroBrew" >&2
+    native_choice="3"
+  else
+    native_choice="2"
   fi
   if [ "$platform" = "linux" ]; then
     detected_native=$(bootstrap_pkg_manager)
     case "$detected_native" in
       apt|dnf|pacman)
-        printf '%s\n' "  3. System package manager ($detected_native)" >&2
+        printf '%s\n' "  $native_choice. System package manager ($detected_native)" >&2
         ;;
     esac
   fi
@@ -125,16 +127,18 @@ prompt_provider() {
     case "${answer:-1}" in
       1) printf '%s\n' "brew"; return 0 ;;
       2)
-        if bootstrap_is_root; then
-          bootstrap_warn "ZeroBrew cannot be installed as root; choose Homebrew or the system package manager"
-        else
+        if ! bootstrap_is_root; then
           printf '%s\n' "zerobrew"; return 0
+        elif [ "${detected_native:-}" = "apt" ] || [ "${detected_native:-}" = "dnf" ] || [ "${detected_native:-}" = "pacman" ]; then
+          printf '%s\n' "$detected_native"; return 0
         fi
         ;;
       3)
-        case "${detected_native:-}" in
-          apt|dnf|pacman) printf '%s\n' "$detected_native"; return 0 ;;
-        esac
+        if ! bootstrap_is_root; then
+          case "${detected_native:-}" in
+            apt|dnf|pacman) printf '%s\n' "$detected_native"; return 0 ;;
+          esac
+        fi
         ;;
     esac
     bootstrap_warn "invalid selection: ${answer:-}"

@@ -230,7 +230,7 @@ assert_contains "$root_noninteractive_output" "must run as a non-root user"
 
 root_interactive_output="$(run_bootstrap_interactive "$home_dir" "$root_bin" 'y
 dev
-3
+2
 n
 n
 n
