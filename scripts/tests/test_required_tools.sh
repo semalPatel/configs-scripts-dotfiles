@@ -191,7 +191,7 @@ assert_contains "$darwin_output" "dry-run: brew bundle --file $REPO_ROOT/configs
 interactive_bin="$fixture_root/interactive-bin"
 mkdir -p "$interactive_bin"
 write_stub "$interactive_bin/uname" 'printf "%s\n" "Darwin"'
-interactive_output="$(run_bootstrap_interactive "$home_dir" "$interactive_bin" '2
+interactive_output="$(BOOTSTRAP_MISSING_COMMANDS='codex docker podman' run_bootstrap_interactive "$home_dir" "$interactive_bin" '2
 y
 y
 n
@@ -205,7 +205,7 @@ assert_contains "$interactive_output" "dry-run: zb bundle install -f $REPO_ROOT/
 assert_contains "$interactive_output" "dry-run: install Codex CLI"
 assert_contains "$interactive_output" "dry-run: zb install docker docker-compose"
 
-interactive_both_output="$(run_bootstrap_interactive "$home_dir" "$interactive_bin" '1
+interactive_both_output="$(BOOTSTRAP_MISSING_COMMANDS='docker podman' run_bootstrap_interactive "$home_dir" "$interactive_bin" '1
 n
 y
 y
@@ -216,6 +216,22 @@ assert_contains "$interactive_both_output" "optional-docker: yes"
 assert_contains "$interactive_both_output" "optional-podman: yes"
 assert_contains "$interactive_both_output" "dry-run: brew install docker docker-compose"
 assert_contains "$interactive_both_output" "dry-run: brew install podman"
+
+existing_tools_bin="$fixture_root/existing-tools-bin"
+mkdir -p "$existing_tools_bin"
+write_stub "$existing_tools_bin/uname" 'printf "%s\n" "Darwin"'
+write_stub "$existing_tools_bin/brew" 'exit 0'
+write_stub "$existing_tools_bin/codex" 'exit 0'
+write_stub "$existing_tools_bin/docker" 'exit 0'
+write_stub "$existing_tools_bin/podman" 'exit 0'
+existing_tools_output="$(run_bootstrap_interactive "$home_dir" "$existing_tools_bin" '1
+y
+y
+y
+' --dry-run)" || fail "existing tools dry-run failed: $existing_tools_output"
+assert_contains "$existing_tools_output" "skip: codex already present"
+assert_contains "$existing_tools_output" "skip: docker already present"
+assert_contains "$existing_tools_output" "skip: podman already present"
 
 darwin_apply_bin="$fixture_root/darwin-apply-bin"
 mkdir -p "$darwin_apply_bin"

@@ -65,8 +65,25 @@ parse_args() {
   done
 }
 
+has_prompt_tty() {
+  [ -r /dev/tty ] || return 1
+  ( : </dev/tty ) >/dev/null 2>&1
+}
+
 is_interactive() {
-  [ "${BOOTSTRAP_ASSUME_TTY:-0}" = "1" ] || { [ -t 0 ] && [ -t 1 ]; }
+  [ "${BOOTSTRAP_ASSUME_TTY:-0}" = "1" ] || has_prompt_tty
+}
+
+prompt_read() {
+  if [ "${BOOTSTRAP_ASSUME_TTY:-0}" = "1" ]; then
+    IFS= read -r answer || answer=""
+  elif has_prompt_tty; then
+    IFS= read -r answer </dev/tty || answer=""
+  else
+    IFS= read -r answer || answer=""
+  fi
+
+  printf '%s\n' "$answer"
 }
 
 detect_platform() {
@@ -94,7 +111,7 @@ prompt_provider() {
 
   while :; do
     printf '%s' "Choice [1]: " >&2
-    IFS= read -r answer || answer=""
+    answer=$(prompt_read)
     case "${answer:-1}" in
       1) printf '%s\n' "brew"; return 0 ;;
       2) printf '%s\n' "zerobrew"; return 0 ;;
@@ -111,7 +128,7 @@ prompt_provider() {
 prompt_optional_codex() {
   while :; do
     printf '%s' "Install Codex CLI? [y/N]: " >&2
-    IFS= read -r answer || answer=""
+    answer=$(prompt_read)
     case "${answer:-n}" in
       y|Y|yes|YES) printf '%s\n' "yes"; return 0 ;;
       n|N|no|NO|"") printf '%s\n' "no"; return 0 ;;
@@ -125,7 +142,7 @@ prompt_optional_install() {
 
   while :; do
     printf '%s' "Install $prompt_label? [y/N]: " >&2
-    IFS= read -r answer || answer=""
+    answer=$(prompt_read)
     case "${answer:-n}" in
       y|Y|yes|YES) printf '%s\n' "yes"; return 0 ;;
       n|N|no|NO|"") printf '%s\n' "no"; return 0 ;;
@@ -456,6 +473,10 @@ install_optional_codex() {
   provider=$1
 
   [ "$OPTIONAL_CODEX" = "yes" ] || return 0
+  if bootstrap_has_command codex; then
+    bootstrap_log "skip: codex already present"
+    return 0
+  fi
 
   case "$provider" in
     brew)
@@ -514,6 +535,10 @@ install_optional_docker() {
   provider=$1
 
   [ "$OPTIONAL_DOCKER" = "yes" ] || return 0
+  if bootstrap_has_command docker; then
+    bootstrap_log "skip: docker already present"
+    return 0
+  fi
 
   case "$provider" in
     brew)
@@ -549,6 +574,10 @@ install_optional_podman() {
   provider=$1
 
   [ "$OPTIONAL_PODMAN" = "yes" ] || return 0
+  if bootstrap_has_command podman; then
+    bootstrap_log "skip: podman already present"
+    return 0
+  fi
 
   case "$provider" in
     brew|zerobrew|apt|dnf|pacman)
