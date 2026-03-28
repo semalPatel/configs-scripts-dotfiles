@@ -351,8 +351,8 @@ codex_release_archive() {
   arch=$(uname -m 2>/dev/null || printf '%s\n' "unknown")
 
   case "$platform:$arch" in
-    linux:x86_64|linux:amd64) printf '%s\n' "codex-x86_64-unknown-linux-musl.tar.gz" ;;
-    linux:aarch64|linux:arm64) printf '%s\n' "codex-aarch64-unknown-linux-musl.tar.gz" ;;
+    linux:x86_64|linux:amd64) printf '%s\n' "codex-x86_64-unknown-linux-gnu.tar.gz" ;;
+    linux:aarch64|linux:arm64) printf '%s\n' "codex-aarch64-unknown-linux-gnu.tar.gz" ;;
     darwin:x86_64) printf '%s\n' "codex-x86_64-apple-darwin.tar.gz" ;;
     darwin:arm64|darwin:aarch64) printf '%s\n' "codex-aarch64-apple-darwin.tar.gz" ;;
     *)
@@ -380,13 +380,17 @@ install_codex_release_binary() {
   bootstrap_log "install: download Codex binary $archive_name"
   curl -fsSL "$archive_url" -o "$archive_tmp"
   tar -xzf "$archive_tmp" -C "$extract_dir"
-  if [ -x "$extract_dir/codex" ]; then
-    install -m 755 "$extract_dir/codex" "$target_bin"
-  elif [ -x "$extract_dir/bin/codex" ]; then
-    install -m 755 "$extract_dir/bin/codex" "$target_bin"
-  else
-    bootstrap_fail "downloaded Codex archive did not contain a codex binary"
-  fi
+
+  extracted_bin=""
+  for candidate in "$extract_dir"/codex* "$extract_dir"/bin/codex*; do
+    if [ -f "$candidate" ] && [ -x "$candidate" ]; then
+      extracted_bin=$candidate
+      break
+    fi
+  done
+
+  [ -n "$extracted_bin" ] || bootstrap_fail "downloaded Codex archive did not contain a codex binary"
+  install -m 755 "$extracted_bin" "$target_bin"
 
   trap - EXIT INT TERM
   cleanup_codex_binary_install
