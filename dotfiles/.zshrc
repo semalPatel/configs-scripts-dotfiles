@@ -3,6 +3,15 @@
 export EDITOR="${EDITOR:-vim}"
 export VISUAL="${VISUAL:-$EDITOR}"
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+export HISTFILE="${HISTFILE:-$HOME/.zsh_history}"
+export HISTSIZE="${HISTSIZE:-10000}"
+export SAVEHIST="${SAVEHIST:-10000}"
+
+setopt APPEND_HISTORY
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_SPACE
+setopt HIST_REDUCE_BLANKS
+setopt SHARE_HISTORY
 
 if [ -s "$NVM_DIR/nvm.sh" ]; then
   . "$NVM_DIR/nvm.sh"
@@ -12,6 +21,15 @@ if [ -r "$HOME/.antidote/antidote.zsh" ]; then
   source "$HOME/.antidote/antidote.zsh"
   antidote load
 fi
+
+# Search history by the current command prefix with the arrow keys.
+autoload -U up-line-or-beginning-search down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+bindkey '^[[A' up-line-or-beginning-search
+bindkey '^[[B' down-line-or-beginning-search
+bindkey "${terminfo[kcuu1]}" up-line-or-beginning-search
+bindkey "${terminfo[kcud1]}" down-line-or-beginning-search
 
 if [ -s "$NVM_DIR/bash_completion" ]; then
   . "$NVM_DIR/bash_completion"
