@@ -3,15 +3,33 @@ path=(
   "$HOME/.local/bin"
   "$HOME/.cargo/bin"
   "$HOME/.antigravity/antigravity/bin"
-  /opt/homebrew/bin
-  /usr/local/bin
-  /usr/local/sbin
   /usr/sbin
   /usr/bin
   /sbin
   /bin
   $path
 )
+
+case "$(uname -s 2>/dev/null)" in
+  Darwin)
+    path=(
+      /opt/homebrew/bin
+      /usr/local/bin
+      /usr/local/sbin
+      $path
+    )
+    ;;
+  Linux)
+    path=(
+      /home/linuxbrew/.linuxbrew/bin
+      /home/linuxbrew/.linuxbrew/sbin
+      /usr/local/bin
+      /usr/local/sbin
+      $path
+    )
+    ;;
+esac
+
 export PATH
 
 if command -v brew >/dev/null 2>&1; then
