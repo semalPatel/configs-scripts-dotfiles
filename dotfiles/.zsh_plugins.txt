@@ -1,4 +1,3 @@
 mattmc3/ez-compinit
-zsh-users/zsh-history-substring-search
 zdharma-continuum/fast-syntax-highlighting
 sindresorhus/pure
