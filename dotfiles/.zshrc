@@ -27,16 +27,13 @@ if [ -r "$HOME/.antidote/antidote.zsh" ]; then
 fi
 
 # Search history by the current command prefix with the arrow keys.
-autoload -U up-line-or-beginning-search down-line-or-beginning-search
-zle -N up-line-or-beginning-search
-zle -N down-line-or-beginning-search
-bindkey '^[[A' up-line-or-beginning-search
-bindkey '^[[B' down-line-or-beginning-search
+bindkey '^[[A' history-substring-search-up
+bindkey '^[[B' history-substring-search-down
 if [ -n "${terminfo[kcuu1]:-}" ]; then
-  bindkey "${terminfo[kcuu1]}" up-line-or-beginning-search
+  bindkey "${terminfo[kcuu1]}" history-substring-search-up
 fi
 if [ -n "${terminfo[kcud1]:-}" ]; then
-  bindkey "${terminfo[kcud1]}" down-line-or-beginning-search
+  bindkey "${terminfo[kcud1]}" history-substring-search-down
 fi
 
 if [ -s "$NVM_DIR/bash_completion" ]; then
