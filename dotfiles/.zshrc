@@ -7,11 +7,15 @@ export HISTFILE="${HISTFILE:-$HOME/.zsh_history}"
 export HISTSIZE="${HISTSIZE:-10000}"
 export SAVEHIST="${SAVEHIST:-10000}"
 
+bindkey -e
+
 setopt APPEND_HISTORY
+setopt INC_APPEND_HISTORY
 setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_ALL_DUPS
 setopt HIST_IGNORE_SPACE
 setopt HIST_REDUCE_BLANKS
-setopt SHARE_HISTORY
+setopt HIST_SAVE_NO_DUPS
 
 if [ -s "$NVM_DIR/nvm.sh" ]; then
   . "$NVM_DIR/nvm.sh"
@@ -28,8 +32,12 @@ zle -N up-line-or-beginning-search
 zle -N down-line-or-beginning-search
 bindkey '^[[A' up-line-or-beginning-search
 bindkey '^[[B' down-line-or-beginning-search
-bindkey "${terminfo[kcuu1]}" up-line-or-beginning-search
-bindkey "${terminfo[kcud1]}" down-line-or-beginning-search
+if [ -n "${terminfo[kcuu1]:-}" ]; then
+  bindkey "${terminfo[kcuu1]}" up-line-or-beginning-search
+fi
+if [ -n "${terminfo[kcud1]:-}" ]; then
+  bindkey "${terminfo[kcud1]}" down-line-or-beginning-search
+fi
 
 if [ -s "$NVM_DIR/bash_completion" ]; then
   . "$NVM_DIR/bash_completion"
