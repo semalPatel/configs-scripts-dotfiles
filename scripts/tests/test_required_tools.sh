@@ -92,15 +92,16 @@ output="$(run_bootstrap "$home_dir" --dry-run --platform darwin)" || fail "boots
 assert_contains "$output" "mode: dry-run"
 assert_contains "$output" "install-mode: link"
 assert_contains "$output" "provider: brew"
+assert_contains "$output" "optional-git-config: no"
 assert_contains "$output" "optional-codex: no"
 assert_contains "$output" "optional-docker: no"
 assert_contains "$output" "optional-podman: no"
 assert_contains "$output" "dry-run: brew bundle --file $REPO_ROOT/configs/Brewfile"
-assert_contains "$output" "dry-run: git setup"
+assert_contains "$output" "skip: managed git config not selected"
+assert_contains "$output" "skip: git setup not selected"
 assert_contains "$output" "dotfiles/.zshrc -> $home_dir/.zshrc"
 assert_contains "$output" "dotfiles/.zprofile -> $home_dir/.zprofile"
 assert_contains "$output" "dotfiles/.zshenv -> $home_dir/.zshenv"
-assert_contains "$output" "dotfiles/.gitconfig -> $home_dir/.gitconfig"
 assert_contains "$output" "dotfiles/.ssh/config -> $home_dir/.ssh/config"
 assert_contains "$output" "dotfiles/.zsh_plugins.txt -> $home_dir/.zsh_plugins.txt"
 assert_contains "$output" "bootstrap complete"
@@ -172,13 +173,14 @@ linux_apply_home="$fixture_root/linux-apply-home"
 mkdir -p "$linux_apply_home"
 linux_apply_output="$(BOOTSTRAP_MISSING_COMMANDS='git zsh' run_bootstrap_interactive "$linux_apply_home" "$linux_apply_bin" '3
 n
+n
 y
 n
 ' --apply)" || fail "linux apply failed: $linux_apply_output"
 assert_contains "$linux_apply_output" "warn: apt package unavailable, retrying with fallback docker-compose: docker-compose-plugin"
 assert_contains "$(cat "$apt_apply_log")" "apt-get install -y docker-compose-plugin"
 assert_contains "$(cat "$apt_apply_log")" "apt-get install -y docker-compose"
-assert_file "$linux_apply_home/.gitconfig"
+assert_absent "$linux_apply_home/.gitconfig"
 assert_file "$linux_apply_home/.ssh/config"
 
 darwin_bin="$fixture_root/darwin-bin"
@@ -196,14 +198,18 @@ write_stub "$interactive_bin/uname" 'printf "%s\n" "Darwin"'
 interactive_output="$(BOOTSTRAP_MISSING_COMMANDS='codex docker podman' run_bootstrap_interactive "$home_dir" "$interactive_bin" '2
 y
 y
+y
 n
 ' --dry-run)" || fail "interactive dry-run failed: $interactive_output"
 assert_contains "$interactive_output" "provider: zerobrew"
+assert_contains "$interactive_output" "optional-git-config: yes"
 assert_contains "$interactive_output" "optional-codex: yes"
 assert_contains "$interactive_output" "optional-docker: yes"
 assert_contains "$interactive_output" "optional-podman: no"
 assert_contains "$interactive_output" "dry-run: install ZeroBrew"
 assert_contains "$interactive_output" "dry-run: zerobrew install packages from $REPO_ROOT/configs/packages/zerobrew.txt"
+assert_contains "$interactive_output" "dotfiles/.gitconfig -> $home_dir/.gitconfig"
+assert_contains "$interactive_output" "dry-run: git setup"
 assert_contains "$interactive_output" "dry-run: install Codex CLI"
 assert_contains "$interactive_output" "dry-run: install Codex release binary into $home_dir/.local/bin/codex"
 assert_contains "$interactive_output" "dry-run: zb install docker docker-compose"
@@ -286,16 +292,19 @@ dev
 n
 n
 n
+n
 ' --dry-run)" || fail "reuse apply failed: $reuse_apply_output"
 assert_contains "$reuse_apply_output" "dry-run: user exists, reuse dev"
 assert_contains "$reuse_apply_output" "dry-run: chown -R dev:dev $reuse_user_home"
 
 interactive_both_output="$(BOOTSTRAP_MISSING_COMMANDS='docker podman' run_bootstrap_interactive "$home_dir" "$interactive_bin" '1
 n
+n
 y
 y
 ' --dry-run)" || fail "interactive both dry-run failed: $interactive_both_output"
 assert_contains "$interactive_both_output" "provider: brew"
+assert_contains "$interactive_both_output" "optional-git-config: no"
 assert_contains "$interactive_both_output" "optional-codex: no"
 assert_contains "$interactive_both_output" "optional-docker: yes"
 assert_contains "$interactive_both_output" "optional-podman: yes"
@@ -313,7 +322,10 @@ existing_tools_output="$(run_bootstrap_interactive "$home_dir" "$existing_tools_
 y
 y
 y
+y
 ' --dry-run)" || fail "existing tools dry-run failed: $existing_tools_output"
+assert_contains "$existing_tools_output" "dotfiles/.gitconfig -> $home_dir/.gitconfig"
+assert_contains "$existing_tools_output" "dry-run: git setup"
 assert_contains "$existing_tools_output" "skip: codex already present"
 assert_contains "$existing_tools_output" "skip: docker already present"
 assert_contains "$existing_tools_output" "skip: podman already present"
@@ -349,7 +361,12 @@ write_stub "$darwin_apply_bin/git-credential-osxkeychain" 'exit 0'
 write_stub "$darwin_apply_bin/npm" 'printf "npm %s\n" "$*" >> "'"$npm_log"'"; exit 0'
 apply_home="$fixture_root/apply-home"
 mkdir -p "$apply_home"
-apply_output="$(BOOTSTRAP_MISSING_COMMANDS='zsh git' run_bootstrap_with_path "$apply_home" "$darwin_apply_bin" --apply --copy)" || fail "darwin apply failed: $apply_output"
+apply_output="$(BOOTSTRAP_MISSING_COMMANDS='zsh git' run_bootstrap_interactive "$apply_home" "$darwin_apply_bin" '1
+y
+n
+n
+n
+' --apply --copy)" || fail "darwin apply failed: $apply_output"
 assert_contains "$apply_output" "install: brew bundle --file"
 assert_contains "$apply_output" "install: brew install git"
 assert_contains "$apply_output" "install: brew install zsh"
@@ -370,9 +387,15 @@ assert_contains "$(cat "$git_log")" "git clone --depth 1 https://github.com/matt
 
 link_home="$fixture_root/link-home"
 mkdir -p "$link_home"
-link_output="$(BOOTSTRAP_MISSING_COMMANDS=zsh run_bootstrap_with_path "$link_home" "$darwin_apply_bin" --apply)" || fail "darwin link apply failed: $link_output"
+link_output="$(BOOTSTRAP_MISSING_COMMANDS=zsh run_bootstrap_interactive "$link_home" "$darwin_apply_bin" '1
+n
+n
+n
+n
+' --apply)" || fail "darwin link apply failed: $link_output"
 assert_symlink_target "$link_home/.zshrc" "$REPO_ROOT/dotfiles/.zshrc"
 assert_symlink_target "$link_home/.zprofile" "$REPO_ROOT/dotfiles/.zprofile"
+assert_absent "$link_home/.gitconfig"
 
 source_dir="$fixture_root/source"
 target_dir="$fixture_root/target"

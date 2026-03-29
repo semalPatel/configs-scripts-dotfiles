@@ -13,6 +13,7 @@ INSTALL_MODE="link"
 PLATFORM_OVERRIDE=""
 PACKAGE_MANAGER_OVERRIDE=""
 SELECTED_PROVIDER=""
+OPTIONAL_GIT_CONFIG="no"
 OPTIONAL_CODEX="no"
 OPTIONAL_DOCKER="no"
 OPTIONAL_PODMAN="no"
@@ -535,6 +536,16 @@ handle_root_bootstrap() {
   exit 0
 }
 
+detect_optional_git_config() {
+  if [ -n "${BOOTSTRAP_OPTIONAL_GIT_CONFIG:-}" ]; then
+    printf '%s\n' "$BOOTSTRAP_OPTIONAL_GIT_CONFIG"
+  elif is_interactive && [ -z "${BOOTSTRAP_SKIP_PROMPTS:-}" ]; then
+    prompt_optional_install "Git config"
+  else
+    printf '%s\n' "no"
+  fi
+}
+
 detect_optional_codex() {
   if [ -n "${BOOTSTRAP_OPTIONAL_CODEX:-}" ]; then
     printf '%s\n' "$BOOTSTRAP_OPTIONAL_CODEX"
@@ -941,7 +952,7 @@ install_optional_podman() {
 
 print_completion() {
   bootstrap_log "bootstrap complete"
-  bootstrap_log "summary: provider=$provider codex=$OPTIONAL_CODEX docker=$OPTIONAL_DOCKER podman=$OPTIONAL_PODMAN"
+  bootstrap_log "summary: provider=$provider git_config=$OPTIONAL_GIT_CONFIG codex=$OPTIONAL_CODEX docker=$OPTIONAL_DOCKER podman=$OPTIONAL_PODMAN"
   bootstrap_log "next-step: start a new login shell with 'exec zsh -l' to load updated PATH and zsh config"
 }
 
@@ -949,7 +960,11 @@ apply_managed_files() {
   apply_target "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
   apply_target "$DOTFILES_DIR/.zprofile" "$HOME/.zprofile"
   apply_target "$DOTFILES_DIR/.zshenv" "$HOME/.zshenv"
-  apply_target "$DOTFILES_DIR/.gitconfig" "$HOME/.gitconfig"
+  if [ "$OPTIONAL_GIT_CONFIG" = "yes" ]; then
+    apply_target "$DOTFILES_DIR/.gitconfig" "$HOME/.gitconfig"
+  else
+    bootstrap_log "skip: managed git config not selected"
+  fi
   apply_target "$DOTFILES_DIR/.ssh/config" "$HOME/.ssh/config"
   apply_target "$DOTFILES_DIR/.zsh_plugins.txt" "$HOME/.zsh_plugins.txt"
 }
@@ -963,6 +978,7 @@ main() {
   fi
   provider=$(detect_provider)
   validate_provider "$provider"
+  OPTIONAL_GIT_CONFIG=$(detect_optional_git_config)
   OPTIONAL_CODEX=$(detect_optional_codex)
   OPTIONAL_DOCKER=$(detect_optional_docker)
   OPTIONAL_PODMAN=$(detect_optional_podman)
@@ -971,6 +987,7 @@ main() {
   bootstrap_log "install-mode: $INSTALL_MODE"
   bootstrap_log "platform: $platform"
   bootstrap_log "provider: $provider"
+  bootstrap_log "optional-git-config: $OPTIONAL_GIT_CONFIG"
   bootstrap_log "optional-codex: $OPTIONAL_CODEX"
   bootstrap_log "optional-docker: $OPTIONAL_DOCKER"
   bootstrap_log "optional-podman: $OPTIONAL_PODMAN"
@@ -1001,7 +1018,11 @@ main() {
   ensure_zsh "$provider"
   ensure_antidote
   apply_managed_files
-  setup_git_defaults "$platform"
+  if [ "$OPTIONAL_GIT_CONFIG" = "yes" ]; then
+    setup_git_defaults "$platform"
+  else
+    bootstrap_log "skip: git setup not selected"
+  fi
   install_optional_codex "$provider"
   install_optional_docker "$provider"
   install_optional_podman "$provider"

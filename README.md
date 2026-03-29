@@ -10,6 +10,7 @@ What it handles:
 - applies the managed shell, Git, and SSH config from this repo
 - sets up `antidote` + `pure` for zsh
 - creates `~/.ssh/control` and enables SSH multiplexing in the managed SSH config
+- offers an optional managed Git identity for `Semal Patel <9878547+semalPatel@users.noreply.github.com>`
 - installs optional tools like `Codex CLI`, `Docker`, and `Podman` when you choose them interactively
 
 The script is idempotent. Re-running it is expected and safe.
@@ -54,6 +55,7 @@ exec zsh -l
 
 Interactive runs ask only in the user-owned bootstrap phase:
 - package provider: `Homebrew`, `ZeroBrew`, or the native system package manager when supported
+- optional managed `Git` config and identity
 - optional `Codex CLI`
 - optional `Docker`
 - optional `Podman`
@@ -98,9 +100,9 @@ If an older machine still has `~/.oh-my-zsh`, you can leave it in place during m
 
 The bootstrap now treats Git as part of core setup:
 - installs Git if needed through the selected provider
-- applies the managed [`dotfiles/.gitconfig`](dotfiles/.gitconfig)
-- configures safe defaults such as `init.defaultBranch`
-- adds credential-helper and SSH-signing defaults when the supporting tools are present
+- can optionally apply the managed [`dotfiles/.gitconfig`](dotfiles/.gitconfig)
+- can optionally configure safe defaults such as `init.defaultBranch`
+- can optionally add credential-helper and SSH-signing defaults when the supporting tools are present
 
 When selected on non-Homebrew paths, `Codex CLI` is installed from the prebuilt release binary into `~/.local/bin/codex` instead of through `npm`.
 
