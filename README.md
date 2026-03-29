@@ -1,7 +1,75 @@
 # dot-files-scripts
 Collection of scripts as well some config files for repetitive tasks. This is a continuous list.
 
-##### Userspace Bootstrap Inventory
+##### Userspace Bootstrap
+
+The bootstrap is meant to work as the first command you run on a fresh machine.
+
+What it handles:
+- installs a minimal base userspace on Linux/LXC and the managed tool set on macOS
+- applies the managed shell, Git, and SSH config from this repo
+- sets up `antidote` + `pure` for zsh
+- creates `~/.ssh/control` and enables SSH multiplexing in the managed SSH config
+- installs optional tools like `Codex CLI`, `Docker`, and `Podman` when you choose them interactively
+
+The script is idempotent. Re-running it is expected and safe.
+
+##### Quick Start
+
+Fresh machine, normal user:
+
+```bash
+BOOTSTRAP_DIR="$(mktemp -d)" && \
+curl -fsSL https://github.com/semalPatel/configs-scripts-dotfiles/archive/refs/heads/main.tar.gz | tar -xzf - -C "$BOOTSTRAP_DIR" && \
+sh "$BOOTSTRAP_DIR/configs-scripts-dotfiles-main/scripts/required_tools.sh" --apply --copy
+```
+
+Fresh Linux/LXC where you only have `root`:
+
+```bash
+BOOTSTRAP_DIR="$(mktemp -d)" && \
+curl -fsSL https://github.com/semalPatel/configs-scripts-dotfiles/archive/refs/heads/main.tar.gz | tar -xzf - -C "$BOOTSTRAP_DIR" && \
+sh "$BOOTSTRAP_DIR/configs-scripts-dotfiles-main/scripts/required_tools.sh" --apply --copy
+```
+
+Expected root/LXC flow:
+- the script creates or reuses a real non-root user
+- repairs that user’s home ownership
+- reruns the bootstrap as that user
+- then opens a login shell as that user
+
+If you SSH from Ghostty into a fresh remote Linux machine and the remote shell is already broken, force a safe terminal type once before bootstrap:
+
+```bash
+export TERM=xterm-256color
+```
+
+After bootstrap finishes, start a fresh login shell if the script does not already hand you one:
+
+```bash
+exec zsh -l
+```
+
+##### Install Flow
+
+Interactive runs ask only in the user-owned bootstrap phase:
+- package provider: `Homebrew`, `ZeroBrew`, or the native system package manager when supported
+- optional `Codex CLI`
+- optional `Docker`
+- optional `Podman`
+
+Linux and LXC default to a minimal base set. Heavy runtimes and project toolchains should be installed per project, not as part of the default machine bootstrap.
+
+`--copy` is the recommended mode for archive-based bootstrap on a fresh machine. It copies managed files into place instead of linking them back to a temporary extracted directory.
+
+For local repo usage:
+
+```bash
+sh scripts/required_tools.sh --dry-run
+sh scripts/required_tools.sh --apply
+```
+
+##### Bootstrap Inventory
 
 Portable machine bootstrap manifests now live under `configs/`:
 - `configs/Brewfile` for macOS/Homebrew
@@ -10,41 +78,11 @@ Portable machine bootstrap manifests now live under `configs/`:
 
 Shared bootstrap shell helpers live in `scripts/lib/bootstrap_common.sh`.
 
-Bootstrap a machine from this repo with:
-
-```bash
-sh scripts/required_tools.sh --dry-run
-sh scripts/required_tools.sh --apply
-```
-
-When run interactively, the script now offers:
-- package provider selection: `Homebrew` or `ZeroBrew`
-- optional `Codex CLI` install
-- optional `Docker` install
-- optional `Podman` install
-
 Notes:
-- On Linux, if you start the bootstrap as `root`, the script will offer to create or reuse a real non-root user, repair that user’s home ownership, stage the bootstrap repo into that user’s home, and then rerun the full interactive bootstrap there.
-- After that rerun finishes, the script will hand off directly into a login shell for that user instead of dropping you back into the original root shell.
-- `ZeroBrew` is for non-root users and is selected during the user-owned rerun, not from the initial root onboarding flow.
 - On macOS, run the bootstrap from your normal user account, not as `root`.
-- The script runs in a child shell, so it cannot mutate your current shell session after it exits. After bootstrap finishes, start a new login shell with `exec zsh -l` to load the updated `PATH` and zsh config.
-
-When run unattended, it defaults to the native Linux package manager when one is available, otherwise `Homebrew`; optional installs are skipped. It also applies the managed Git config and ensures SSH multiplexing support via `~/.ssh/control` and the managed SSH config.
-
-For Linux/LXC machines, the default package sets are intentionally minimal. Project runtimes and heavy toolchains should be installed per project rather than as part of the base machine bootstrap.
-
-Use `--copy` if you want managed files copied into place instead of symlinked.
-
-Copy-paste bootstrap for a fresh machine:
-
-```bash
-BOOTSTRAP_DIR="$(mktemp -d)" && \
-curl -fsSL https://github.com/semalPatel/configs-scripts-dotfiles/archive/refs/heads/main.tar.gz | tar -xzf - -C "$BOOTSTRAP_DIR" && \
-sh "$BOOTSTRAP_DIR/configs-scripts-dotfiles-main/scripts/required_tools.sh" --apply --copy
-```
-
-That archive-based flow does not require `git` to already be installed on the target machine.
+- `ZeroBrew` is a userspace choice and is only offered in the user-owned bootstrap phase.
+- When run unattended, the script defaults to the native Linux package manager when one is available, otherwise `Homebrew`; optional installs are skipped.
+- The archive-based bootstrap flow does not require `git` to already be installed on the target machine.
 
 ##### Zsh Migration
 
