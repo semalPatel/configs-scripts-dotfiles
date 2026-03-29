@@ -8,6 +8,7 @@ The bootstrap is meant to work as the first command you run on a fresh machine.
 What it handles:
 - installs a minimal base userspace on Linux/LXC and the managed tool set on macOS
 - applies the managed shell, Git, and SSH config from this repo
+- applies the managed Ghostty config from this repo
 - sets up `antidote` + `pure` for zsh
 - creates `~/.ssh/control` and enables SSH multiplexing in the managed SSH config
 - offers an optional managed Git identity for `Semal Patel <9878547+semalPatel@users.noreply.github.com>`
@@ -117,6 +118,10 @@ sh scripts/capture_userspace.sh
 ```
 
 It captures only the approved files in `~/.zshrc`, `~/.zprofile`, `~/.zshenv`, `~/.gitconfig`, and `~/.ssh/config`, normalizes home-relative paths where possible, and keeps machine-specific SSH includes commented out. For test fixtures or alternate roots, set `CAPTURE_SOURCE_HOME` and `CAPTURE_REPO_ROOT`.
+
+Ghostty config is also captured when present, from either:
+- `~/.config/ghostty/config`
+- `~/Library/Application Support/com.mitchellh.ghostty/config`
 
 ##### Easily switch JDK Versions
 

@@ -967,6 +967,10 @@ apply_managed_files() {
   fi
   apply_target "$DOTFILES_DIR/.ssh/config" "$HOME/.ssh/config"
   apply_target "$DOTFILES_DIR/.zsh_plugins.txt" "$HOME/.zsh_plugins.txt"
+  apply_target "$DOTFILES_DIR/.config/ghostty/config" "$HOME/.config/ghostty/config"
+  if [ "$(detect_platform)" = "darwin" ]; then
+    apply_target "$DOTFILES_DIR/.config/ghostty/config" "$HOME/Library/Application Support/com.mitchellh.ghostty/config"
+  fi
 }
 
 main() {

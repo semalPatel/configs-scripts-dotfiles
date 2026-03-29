@@ -1,0 +1,3 @@
+# Managed Ghostty configuration.
+
+keybind = cmd+backspace=esc:w

@@ -36,7 +36,7 @@ trap 'rm -rf "$fixture_root"' EXIT
 
 source_home="$fixture_root/source-home"
 repo_root="$fixture_root/repo-root"
-mkdir -p "$source_home/.ssh" "$repo_root"
+mkdir -p "$source_home/.ssh" "$source_home/Library/Application Support/com.mitchellh.ghostty" "$repo_root"
 
 printf '%s\n' "export PATH=\"$source_home/.local/bin:$source_home/bin:\$PATH\"" > "$source_home/.zshenv"
 printf '%s\n' "export PATH=\"$source_home/.cargo/bin:\$PATH\"" > "$source_home/.zprofile"
@@ -57,6 +57,7 @@ Host github.com
 EOF
 printf '%s\n' 'PRIVATE KEY DATA' > "$source_home/.ssh/id_rsa"
 printf '%s\n' 'PUBLIC KEY DATA' > "$source_home/.ssh/id_rsa.pub"
+printf '%s\n' 'keybind = cmd+backspace=esc:w' > "$source_home/Library/Application Support/com.mitchellh.ghostty/config"
 
 output="$(CAPTURE_SOURCE_HOME="$source_home" CAPTURE_REPO_ROOT="$repo_root" sh "$CAPTURE_SCRIPT")" || fail "capture script failed: $output"
 
@@ -65,6 +66,7 @@ assert_file "$repo_root/dotfiles/.zprofile"
 assert_file "$repo_root/dotfiles/.zshrc"
 assert_file "$repo_root/dotfiles/.gitconfig"
 assert_file "$repo_root/dotfiles/.ssh/config"
+assert_file "$repo_root/dotfiles/.config/ghostty/config"
 assert_absent "$repo_root/dotfiles/.ssh/id_rsa"
 assert_absent "$repo_root/dotfiles/.ssh/id_rsa.pub"
 
@@ -74,8 +76,10 @@ assert_contains "$(cat "$repo_root/dotfiles/.zshrc")" 'export PATH="$HOME/.antig
 assert_contains "$(cat "$repo_root/dotfiles/.ssh/config")" '# Include ~/.colima/ssh_config'
 assert_contains "$(cat "$repo_root/dotfiles/.ssh/config")" 'Include ~/.ssh/conf.d/*.conf'
 assert_contains "$(cat "$repo_root/dotfiles/.ssh/config")" 'IdentityFile ~/.ssh/github_noreply'
+assert_contains "$(cat "$repo_root/dotfiles/.config/ghostty/config")" 'keybind = cmd+backspace=esc:w'
 assert_contains "$output" "capture: dotfiles/.zshenv"
 assert_contains "$output" "capture: dotfiles/.ssh/config"
-assert_contains "$output" "summary: captured 5 files"
+assert_contains "$output" "capture: dotfiles/.config/ghostty/config"
+assert_contains "$output" "summary: captured 6 files"
 
 printf '%s\n' "PASS: capture userspace tests"

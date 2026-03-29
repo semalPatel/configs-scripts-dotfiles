@@ -69,6 +69,29 @@ capture_file() {
   SUMMARY_CAPTURED=$((SUMMARY_CAPTURED + 1))
 }
 
+capture_optional_file() {
+  source_path=$1
+  target_rel=$2
+  transform_kind=$3
+
+  target_path="$DOTFILES_DIR/$target_rel"
+
+  if [ ! -f "$source_path" ]; then
+    bootstrap_warn "skip: missing approved file $source_path"
+    SUMMARY_SKIPPED=$((SUMMARY_SKIPPED + 1))
+    return 1
+  fi
+
+  bootstrap_mkdir_parent "$target_path"
+  tmp_target="$TMP_DIR/$(basename -- "$target_rel")"
+  write_transformed "$source_path" "$tmp_target" "$transform_kind"
+  mv "$tmp_target" "$target_path"
+
+  bootstrap_log "capture: dotfiles/${target_rel#./} from $source_path"
+  SUMMARY_CAPTURED=$((SUMMARY_CAPTURED + 1))
+  return 0
+}
+
 main() {
   if [ ! -d "$SOURCE_HOME" ]; then
     bootstrap_fail "source home not found: $SOURCE_HOME"
@@ -83,6 +106,8 @@ main() {
   capture_file ".zshenv" ".zshenv" shell
   capture_file ".gitconfig" ".gitconfig" git
   capture_file ".ssh/config" ".ssh/config" ssh
+  capture_optional_file "$SOURCE_HOME/.config/ghostty/config" ".config/ghostty/config" raw || \
+    capture_optional_file "$SOURCE_HOME/Library/Application Support/com.mitchellh.ghostty/config" ".config/ghostty/config" raw || true
 
   bootstrap_log "summary: captured $SUMMARY_CAPTURED files, skipped $SUMMARY_SKIPPED missing approved files"
 }
