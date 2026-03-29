@@ -1,6 +1,10 @@
 typeset -U path PATH
 path=(
   "$HOME/.local/bin"
+  "${XDG_DATA_HOME:-$HOME/.local/share}/zerobrew/prefix/bin"
+  "${XDG_DATA_HOME:-$HOME/.local/share}/zerobrew/prefix/sbin"
+  /opt/zerobrew/bin
+  /opt/zerobrew/sbin
   "$HOME/.cargo/bin"
   "$HOME/.antigravity/antigravity/bin"
   /usr/sbin
