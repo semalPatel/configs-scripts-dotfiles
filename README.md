@@ -12,7 +12,7 @@ What it handles:
 - sets up `antidote` + `pure` for zsh
 - creates `~/.ssh/control` and enables SSH multiplexing in the managed SSH config
 - offers an optional managed Git identity for `Semal Patel <9878547+semalPatel@users.noreply.github.com>`
-- installs optional tools like `Codex CLI`, `Docker`, and `Podman` when you choose them interactively
+- can install a selected AI agent plus optional container tools when you choose them interactively
 
 The script is idempotent. Re-running it is expected and safe.
 
@@ -57,7 +57,8 @@ exec zsh -l
 Interactive runs ask only in the user-owned bootstrap phase:
 - package provider: `Homebrew`, `ZeroBrew`, or the native system package manager when supported
 - optional managed `Git` config and identity
-- optional `Codex CLI`
+- agent selection: `none`, `Codex`, `Claude Code`, `OpenCode`, or `Mistral Vibe`
+- install-method confirmation for the selected agent
 - optional `Docker`
 - optional `Podman`
 
@@ -105,7 +106,15 @@ The bootstrap now treats Git as part of core setup:
 - can optionally configure safe defaults such as `init.defaultBranch`
 - can optionally add credential-helper and SSH-signing defaults when the supporting tools are present
 
-When selected on non-Homebrew paths, `Codex CLI` is installed from the prebuilt release binary into `~/.local/bin/codex` instead of through `npm`.
+Agent install notes:
+- `Codex` uses the best available method on the target machine:
+  - `npm install -g @openai/codex` when `npm` is available
+  - `brew install --cask codex` on Homebrew when `npm` is not available
+  - prebuilt release binary install into `~/.local/bin/codex` otherwise
+- `Claude Code` uses the official native install script
+- `OpenCode` uses Homebrew when available, then `npm`, then the official install script
+- `Mistral Vibe` uses the official install script
+- if `Codex` is selected, the bootstrap also configures [`obra/superpowers`](https://github.com/obra/superpowers) for Codex by cloning the repo into `~/.codex/superpowers` and linking its skills into `~/.agents/skills/superpowers`
 
 The managed SSH config includes multiplexing defaults and the bootstrap always creates `~/.ssh/control`.
 

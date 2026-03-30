@@ -14,7 +14,8 @@ PLATFORM_OVERRIDE=""
 PACKAGE_MANAGER_OVERRIDE=""
 SELECTED_PROVIDER=""
 OPTIONAL_GIT_CONFIG="no"
-OPTIONAL_CODEX="no"
+SELECTED_AGENT="none"
+AGENT_INSTALL_METHOD="none"
 OPTIONAL_DOCKER="no"
 OPTIONAL_PODMAN="no"
 ROOT_TARGET_HOME=""
@@ -173,13 +174,23 @@ prompt_userspace_provider() {
   done
 }
 
-prompt_optional_codex() {
+prompt_agent_choice() {
+  printf '%s\n' "Select AI agent to install:" >&2
+  printf '%s\n' "  1. None" >&2
+  printf '%s\n' "  2. Codex" >&2
+  printf '%s\n' "  3. Claude Code" >&2
+  printf '%s\n' "  4. OpenCode" >&2
+  printf '%s\n' "  5. Mistral Vibe" >&2
+
   while :; do
-    printf '%s' "Install Codex CLI? [y/N]: " >&2
+    printf '%s' "Choice [1]: " >&2
     answer=$(prompt_read)
-    case "${answer:-n}" in
-      y|Y|yes|YES) printf '%s\n' "yes"; return 0 ;;
-      n|N|no|NO|"") printf '%s\n' "no"; return 0 ;;
+    case "${answer:-1}" in
+      1) printf '%s\n' "none"; return 0 ;;
+      2) printf '%s\n' "codex"; return 0 ;;
+      3) printf '%s\n' "claude-code"; return 0 ;;
+      4) printf '%s\n' "opencode"; return 0 ;;
+      5) printf '%s\n' "mistral-vibe"; return 0 ;;
     esac
     bootstrap_warn "invalid selection: ${answer:-}"
   done
@@ -546,14 +557,87 @@ detect_optional_git_config() {
   fi
 }
 
-detect_optional_codex() {
-  if [ -n "${BOOTSTRAP_OPTIONAL_CODEX:-}" ]; then
-    printf '%s\n' "$BOOTSTRAP_OPTIONAL_CODEX"
+detect_selected_agent() {
+  if [ -n "${BOOTSTRAP_SELECTED_AGENT:-}" ]; then
+    printf '%s\n' "$BOOTSTRAP_SELECTED_AGENT"
   elif is_interactive && [ -z "${BOOTSTRAP_SKIP_PROMPTS:-}" ]; then
-    prompt_optional_codex
+    prompt_agent_choice
   else
-    printf '%s\n' "no"
+    printf '%s\n' "none"
   fi
+}
+
+agent_install_method() {
+  agent=$1
+  provider=$2
+
+  case "$agent" in
+    none) printf '%s\n' "none" ;;
+    codex)
+      if bootstrap_has_command npm; then
+        printf '%s\n' "npm"
+      elif [ "$provider" = "brew" ]; then
+        printf '%s\n' "brew-cask"
+      else
+        printf '%s\n' "codex-release-binary"
+      fi
+      ;;
+    claude-code)
+      printf '%s\n' "claude-native-install-script"
+      ;;
+    opencode)
+      if [ "$provider" = "brew" ]; then
+        printf '%s\n' "brew-tap"
+      elif bootstrap_has_command npm; then
+        printf '%s\n' "npm"
+      else
+        printf '%s\n' "opencode-install-script"
+      fi
+      ;;
+    mistral-vibe)
+      printf '%s\n' "mistral-vibe-install-script"
+      ;;
+    *)
+      bootstrap_fail "unsupported agent selection: $agent"
+      ;;
+  esac
+}
+
+agent_install_summary() {
+  agent=$1
+  method=$2
+
+  case "$agent:$method" in
+    codex:npm) printf '%s\n' "Install Codex via npm (@openai/codex)" ;;
+    codex:brew-cask) printf '%s\n' "Install Codex via Homebrew cask" ;;
+    codex:codex-release-binary) printf '%s\n' "Install Codex via prebuilt release binary" ;;
+    claude-code:claude-native-install-script) printf '%s\n' "Install Claude Code via official native install script" ;;
+    opencode:brew-tap) printf '%s\n' "Install OpenCode via Homebrew tap" ;;
+    opencode:npm) printf '%s\n' "Install OpenCode via npm (opencode-ai)" ;;
+    opencode:opencode-install-script) printf '%s\n' "Install OpenCode via official install script" ;;
+    mistral-vibe:mistral-vibe-install-script) printf '%s\n' "Install Mistral Vibe via official install script" ;;
+    none:none) printf '%s\n' "No agent install selected" ;;
+    *) bootstrap_fail "unsupported agent install plan: $agent via $method" ;;
+  esac
+}
+
+confirm_agent_install() {
+  agent=$1
+  method=$2
+
+  [ "$agent" != "none" ] || return 0
+
+  if [ -n "${BOOTSTRAP_CONFIRM_AGENT_INSTALL:-}" ]; then
+    [ "$BOOTSTRAP_CONFIRM_AGENT_INSTALL" = "yes" ] || return 1
+    return 0
+  fi
+
+  if is_interactive && [ -z "${BOOTSTRAP_SKIP_PROMPTS:-}" ]; then
+    bootstrap_log "agent-plan: $(agent_install_summary "$agent" "$method")"
+    [ "$(prompt_confirmation "Proceed with installing $agent using $method?" y)" = "yes" ] || return 1
+  fi
+
+  return 0
 }
 
 detect_optional_docker() {
@@ -876,32 +960,134 @@ setup_git_defaults() {
   fi
 }
 
-install_optional_codex() {
-  provider=$1
+agent_command_name() {
+  agent=$1
 
-  [ "$OPTIONAL_CODEX" = "yes" ] || return 0
-  if bootstrap_has_command codex; then
-    bootstrap_log "skip: codex already present"
+  case "$agent" in
+    codex) printf '%s\n' "codex" ;;
+    claude-code) printf '%s\n' "claude" ;;
+    opencode) printf '%s\n' "opencode" ;;
+    mistral-vibe) printf '%s\n' "vibe" ;;
+    none) printf '%s\n' "" ;;
+    *) bootstrap_fail "unsupported agent command lookup: $agent" ;;
+  esac
+}
+
+configure_codex_superpowers() {
+  superpowers_dir="$HOME/.codex/superpowers"
+  skills_root="$HOME/.agents/skills"
+  skills_link="$skills_root/superpowers"
+
+  if [ "$ACTION" = "dry-run" ]; then
+    bootstrap_log "dry-run: configure obra/superpowers for codex"
+    bootstrap_log "dry-run: git clone https://github.com/obra/superpowers.git $superpowers_dir"
+    bootstrap_log "dry-run: ln -s $superpowers_dir/skills $skills_link"
     return 0
   fi
 
-  case "$provider" in
-    brew)
-      ensure_brew
+  bootstrap_log "install: configure obra/superpowers for codex"
+  mkdir -p "$HOME/.codex" "$skills_root"
+  if [ -d "$superpowers_dir/.git" ]; then
+    bootstrap_log "skip: obra/superpowers already present at $superpowers_dir"
+    (cd "$superpowers_dir" && git pull --ff-only >/dev/null 2>&1 || true)
+  else
+    git clone --depth 1 https://github.com/obra/superpowers.git "$superpowers_dir"
+  fi
+  if [ -L "$skills_link" ] && [ "$(readlink "$skills_link")" = "$superpowers_dir/skills" ]; then
+    bootstrap_log "skip: codex superpowers symlink already present"
+  else
+    if [ -e "$skills_link" ] || [ -L "$skills_link" ]; then
+      rm -rf "$skills_link"
+    fi
+    ln -s "$superpowers_dir/skills" "$skills_link"
+  fi
+}
+
+install_selected_agent() {
+  provider=$1
+  platform=$2
+  agent=$3
+  method=$4
+
+  [ "$agent" != "none" ] || return 0
+
+  agent_command=$(agent_command_name "$agent")
+  if [ -n "$agent_command" ] && bootstrap_has_command "$agent_command"; then
+    bootstrap_log "skip: $agent_command already present"
+    [ "$agent" = "codex" ] && configure_codex_superpowers
+    return 0
+  fi
+
+  if [ "$ACTION" = "dry-run" ]; then
+    bootstrap_log "dry-run: install agent $agent via $method"
+  else
+    bootstrap_log "install: agent $agent via $method"
+  fi
+
+  case "$agent:$method" in
+    codex:npm)
       if [ "$ACTION" = "dry-run" ]; then
-        bootstrap_log "dry-run: install Codex CLI"
+        bootstrap_log "dry-run: npm install -g @openai/codex"
       else
-        bootstrap_log "install: brew install --cask codex"
+        npm install -g @openai/codex
+      fi
+      configure_codex_superpowers
+      ;;
+    codex:brew-cask)
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: brew install --cask codex"
+      else
+        ensure_brew
         brew install --cask codex
       fi
+      configure_codex_superpowers
       ;;
-    zerobrew|apt|dnf|pacman)
+    codex:codex-release-binary)
       if [ "$ACTION" = "dry-run" ]; then
-        bootstrap_log "dry-run: install Codex CLI"
         bootstrap_log "dry-run: install Codex release binary into $HOME/.local/bin/codex"
       else
         install_codex_release_binary
       fi
+      configure_codex_superpowers
+      ;;
+    claude-code:claude-native-install-script)
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: curl -fsSL https://claude.ai/install.sh | bash"
+      else
+        sh -c "$(curl -fsSL https://claude.ai/install.sh)"
+      fi
+      ;;
+    opencode:brew-tap)
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: brew install anomalyco/tap/opencode"
+      else
+        ensure_brew
+        brew install anomalyco/tap/opencode
+      fi
+      ;;
+    opencode:npm)
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: npm install -g opencode-ai"
+      else
+        npm install -g opencode-ai
+      fi
+      ;;
+    opencode:opencode-install-script)
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: curl -fsSL https://opencode.ai/install | bash"
+      else
+        sh -c "$(curl -fsSL https://opencode.ai/install)"
+      fi
+      ;;
+    mistral-vibe:mistral-vibe-install-script)
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: curl -LsSf https://mistral.ai/vibe/install.sh | bash"
+      else
+        sh -c "$(curl -LsSf https://mistral.ai/vibe/install.sh)"
+      fi
+      ;;
+    *)
+      bootstrap_fail "unsupported agent installation plan: $agent via $method on $platform"
       ;;
   esac
 }
@@ -963,7 +1149,7 @@ install_optional_podman() {
 
 print_completion() {
   bootstrap_log "bootstrap complete"
-  bootstrap_log "summary: provider=$provider git_config=$OPTIONAL_GIT_CONFIG codex=$OPTIONAL_CODEX docker=$OPTIONAL_DOCKER podman=$OPTIONAL_PODMAN"
+  bootstrap_log "summary: provider=$provider git_config=$OPTIONAL_GIT_CONFIG agent=$SELECTED_AGENT method=$AGENT_INSTALL_METHOD docker=$OPTIONAL_DOCKER podman=$OPTIONAL_PODMAN"
   bootstrap_log "next-step: start a new login shell with 'exec zsh -l' to load updated PATH and zsh config"
 }
 
@@ -994,7 +1180,12 @@ main() {
   provider=$(detect_provider)
   validate_provider "$provider"
   OPTIONAL_GIT_CONFIG=$(detect_optional_git_config)
-  OPTIONAL_CODEX=$(detect_optional_codex)
+  SELECTED_AGENT=$(detect_selected_agent)
+  AGENT_INSTALL_METHOD=$(agent_install_method "$SELECTED_AGENT" "$provider")
+  if ! confirm_agent_install "$SELECTED_AGENT" "$AGENT_INSTALL_METHOD"; then
+    SELECTED_AGENT="none"
+    AGENT_INSTALL_METHOD="none"
+  fi
   OPTIONAL_DOCKER=$(detect_optional_docker)
   OPTIONAL_PODMAN=$(detect_optional_podman)
 
@@ -1003,7 +1194,8 @@ main() {
   bootstrap_log "platform: $platform"
   bootstrap_log "provider: $provider"
   bootstrap_log "optional-git-config: $OPTIONAL_GIT_CONFIG"
-  bootstrap_log "optional-codex: $OPTIONAL_CODEX"
+  bootstrap_log "selected-agent: $SELECTED_AGENT"
+  bootstrap_log "agent-install-method: $AGENT_INSTALL_METHOD"
   bootstrap_log "optional-docker: $OPTIONAL_DOCKER"
   bootstrap_log "optional-podman: $OPTIONAL_PODMAN"
 
@@ -1039,7 +1231,7 @@ main() {
   else
     bootstrap_log "skip: git setup not selected"
   fi
-  install_optional_codex "$provider"
+  install_selected_agent "$provider" "$platform" "$SELECTED_AGENT" "$AGENT_INSTALL_METHOD"
   install_optional_docker "$provider"
   install_optional_podman "$provider"
   print_completion
