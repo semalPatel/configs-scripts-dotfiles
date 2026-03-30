@@ -3,4 +3,3 @@
 # per project instead of in the default machine bootstrap.
 tmux
 uv
-vim
