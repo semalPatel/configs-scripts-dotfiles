@@ -109,6 +109,10 @@ When selected on non-Homebrew paths, `Codex CLI` is installed from the prebuilt 
 
 The managed SSH config includes multiplexing defaults and the bootstrap always creates `~/.ssh/control`.
 
+GitHub SSH note:
+- the managed SSH config no longer assumes a dedicated `~/.ssh/github_noreply` key exists
+- if you want a dedicated GitHub key, generate one and then uncomment or add an `IdentityFile ~/.ssh/github_noreply` entry for `github.com`
+
 ##### Capture Current Userspace
 
 Use `scripts/capture_userspace.sh` to refresh the managed dotfiles from the current machine:
