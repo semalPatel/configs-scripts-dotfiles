@@ -3,9 +3,9 @@
 export EDITOR="${EDITOR:-vim}"
 export VISUAL="${VISUAL:-$EDITOR}"
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-export HISTFILE="${HISTFILE:-$HOME/.zsh_history}"
-export HISTSIZE="${HISTSIZE:-10000}"
-export SAVEHIST="${SAVEHIST:-10000}"
+export HISTFILE="$HOME/.zsh_history"
+export HISTSIZE=10000
+export SAVEHIST=10000
 
 mkdir -p "$(dirname "$HISTFILE")"
 touch "$HISTFILE"
