@@ -618,6 +618,17 @@ ensure_dir() {
   fi
 }
 
+ensure_file() {
+  file_path=$1
+
+  if [ "$ACTION" = "dry-run" ]; then
+    bootstrap_log "dry-run: touch $file_path"
+  else
+    mkdir -p "$(dirname -- "$file_path")"
+    touch "$file_path"
+  fi
+}
+
 ensure_brew() {
   if bootstrap_has_command brew || bootstrap_activate_homebrew; then
     return 0
@@ -999,6 +1010,7 @@ main() {
   ensure_dir "$HOME/.ssh"
   ensure_dir "$HOME/.ssh/control"
   ensure_dir "$HOME/.config"
+  ensure_file "$HOME/.zsh_history"
 
   case "$platform:$provider" in
     darwin:brew)

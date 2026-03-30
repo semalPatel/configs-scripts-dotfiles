@@ -7,6 +7,9 @@ export HISTFILE="${HISTFILE:-$HOME/.zsh_history}"
 export HISTSIZE="${HISTSIZE:-10000}"
 export SAVEHIST="${SAVEHIST:-10000}"
 
+mkdir -p "$(dirname "$HISTFILE")"
+touch "$HISTFILE"
+
 bindkey -e
 
 setopt APPEND_HISTORY
