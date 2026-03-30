@@ -1,3 +1,4 @@
 # Managed Ghostty configuration.
 
+cursor-style = bar
 keybind = cmd+backspace=esc:w
