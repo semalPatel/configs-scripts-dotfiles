@@ -574,13 +574,17 @@ agent_install_method() {
   case "$agent" in
     none) printf '%s\n' "none" ;;
     codex)
-      if bootstrap_has_command npm; then
-        printf '%s\n' "npm"
-      elif [ "$provider" = "brew" ]; then
-        printf '%s\n' "brew-cask"
-      else
-        printf '%s\n' "codex-release-binary"
-      fi
+      case "$provider" in
+        brew) printf '%s\n' "brew-cask" ;;
+        zerobrew) printf '%s\n' "zerobrew" ;;
+        *)
+          if bootstrap_has_command npm; then
+            printf '%s\n' "npm"
+          else
+            printf '%s\n' "codex-release-binary"
+          fi
+          ;;
+      esac
       ;;
     claude-code)
       printf '%s\n' "claude-native-install-script"
@@ -610,6 +614,7 @@ agent_install_summary() {
   case "$agent:$method" in
     codex:npm) printf '%s\n' "Install Codex via npm (@openai/codex)" ;;
     codex:brew-cask) printf '%s\n' "Install Codex via Homebrew cask" ;;
+    codex:zerobrew) printf '%s\n' "Install Codex via ZeroBrew" ;;
     codex:codex-release-binary) printf '%s\n' "Install Codex via prebuilt release binary" ;;
     claude-code:claude-native-install-script) printf '%s\n' "Install Claude Code via official native install script" ;;
     opencode:brew-tap) printf '%s\n' "Install OpenCode via Homebrew tap" ;;
@@ -1039,6 +1044,15 @@ install_selected_agent() {
       else
         ensure_brew
         brew install --cask codex
+      fi
+      configure_codex_superpowers
+      ;;
+    codex:zerobrew)
+      if [ "$ACTION" = "dry-run" ]; then
+        bootstrap_log "dry-run: zb install codex"
+      else
+        ensure_zerobrew
+        zb install codex
       fi
       configure_codex_superpowers
       ;;

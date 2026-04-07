@@ -138,6 +138,18 @@ assert_contains "$linux_output" "platform: linux"
 assert_contains "$linux_output" "provider: apt"
 assert_contains "$linux_output" "dry-run: apt install packages from"
 
+linux_codex_output="$(BOOTSTRAP_MISSING_COMMANDS='npm codex docker podman' run_bootstrap_interactive "$home_dir" "$linux_bin" '3
+n
+2
+y
+n
+n
+' --dry-run)" || fail "linux codex dry-run failed: $linux_codex_output"
+assert_contains "$linux_codex_output" "provider: apt"
+assert_contains "$linux_codex_output" "selected-agent: codex"
+assert_contains "$linux_codex_output" "agent-install-method: codex-release-binary"
+assert_contains "$linux_codex_output" "dry-run: install Codex release binary into $home_dir/.local/bin/codex"
+
 linux_apply_bin="$fixture_root/linux-apply-bin"
 mkdir -p "$linux_apply_bin"
 apt_apply_log="$fixture_root/apt-apply.log"
@@ -212,13 +224,13 @@ assert_contains "$interactive_output" "optional-git-config: yes"
 assert_contains "$interactive_output" "selected-agent: codex"
 assert_contains "$interactive_output" "optional-docker: yes"
 assert_contains "$interactive_output" "optional-podman: no"
-assert_contains "$interactive_output" "agent-install-method: codex-release-binary"
+assert_contains "$interactive_output" "agent-install-method: zerobrew"
 assert_contains "$interactive_output" "dry-run: install ZeroBrew"
 assert_contains "$interactive_output" "dry-run: zerobrew install packages from $REPO_ROOT/configs/packages/zerobrew.txt"
 assert_contains "$interactive_output" "dotfiles/.gitconfig -> $home_dir/.gitconfig"
 assert_contains "$interactive_output" "dry-run: git setup"
-assert_contains "$interactive_output" "dry-run: install agent codex via codex-release-binary"
-assert_contains "$interactive_output" "dry-run: install Codex release binary into $home_dir/.local/bin/codex"
+assert_contains "$interactive_output" "dry-run: install agent codex via zerobrew"
+assert_contains "$interactive_output" "dry-run: zb install codex"
 assert_contains "$interactive_output" "dry-run: configure obra/superpowers for codex"
 assert_contains "$interactive_output" "dry-run: zb install docker docker-compose"
 
@@ -318,6 +330,23 @@ assert_contains "$interactive_both_output" "optional-docker: yes"
 assert_contains "$interactive_both_output" "optional-podman: yes"
 assert_contains "$interactive_both_output" "dry-run: brew install docker docker-compose"
 assert_contains "$interactive_both_output" "dry-run: brew install podman"
+
+brew_codex_bin="$fixture_root/brew-codex-bin"
+mkdir -p "$brew_codex_bin"
+write_stub "$brew_codex_bin/uname" 'printf "%s\n" "Darwin"'
+write_stub "$brew_codex_bin/brew" 'exit 0'
+write_stub "$brew_codex_bin/npm" 'exit 0'
+brew_codex_output="$(BOOTSTRAP_MISSING_COMMANDS='codex docker podman' run_bootstrap_interactive "$home_dir" "$brew_codex_bin" '1
+n
+2
+y
+n
+n
+' --dry-run)" || fail "brew codex dry-run failed: $brew_codex_output"
+assert_contains "$brew_codex_output" "provider: brew"
+assert_contains "$brew_codex_output" "selected-agent: codex"
+assert_contains "$brew_codex_output" "agent-install-method: brew-cask"
+assert_contains "$brew_codex_output" "dry-run: brew install --cask codex"
 
 existing_tools_bin="$fixture_root/existing-tools-bin"
 mkdir -p "$existing_tools_bin"

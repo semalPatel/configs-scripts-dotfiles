@@ -108,9 +108,9 @@ The bootstrap now treats Git as part of core setup:
 
 Agent install notes:
 - `Codex` uses the best available method on the target machine:
-  - `npm install -g @openai/codex` when `npm` is available
-  - `brew install --cask codex` on Homebrew when `npm` is not available
-  - prebuilt release binary install into `~/.local/bin/codex` otherwise
+  - the selected userspace package provider first (`brew install --cask codex` for Homebrew, `zb install codex` for ZeroBrew)
+  - `npm install -g @openai/codex` when the selected provider does not manage Codex and `npm` is available
+  - prebuilt release binary install into `~/.local/bin/codex` when no package-manager install is available
 - `Claude Code` uses the official native install script
 - `OpenCode` uses Homebrew when available, then `npm`, then the official install script
 - `Mistral Vibe` uses the official install script
