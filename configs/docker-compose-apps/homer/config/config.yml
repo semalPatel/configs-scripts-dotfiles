@@ -77,7 +77,7 @@ services:
         tag: "finance"
         url: "https://actual.local.patels.space"
       - name: "Sure"
-        icon: "fas fa-wallet"
+        logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/sure.png"
         tag: "finance"
         url: "https://sure.local.patels.space"
       - name: "Vaultwarden"
