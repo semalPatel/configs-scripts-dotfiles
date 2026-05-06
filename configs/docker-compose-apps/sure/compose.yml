@@ -88,6 +88,8 @@ services:
       - "traefik.http.routers.sure.rule=Host(`sure.local.patels.space`)"
       - "traefik.http.routers.sure.entrypoints=https"
       - "traefik.http.routers.sure.tls=true"
+      - "traefik.http.routers.sure.service=sure"
+      - "traefik.http.services.sure.loadbalancer.server.port=3000"
     networks:
       - sure_net
       - proxy
@@ -108,12 +110,6 @@ services:
       - 1.1.1.1
     environment:
       <<: *rails_env
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=proxy"
-      - "traefik.http.routers.sure.rule=Host(`sure.local.patels.space`)"
-      - "traefik.http.routers.sure.entrypoints=https"
-      - "traefik.http.routers.sure.tls=true"
     networks:
       - sure_net
       - proxy
