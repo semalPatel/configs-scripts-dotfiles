@@ -96,6 +96,10 @@ services:
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/paperless.png"
         tag: "documents pdf"
         url: "https://paperless.local.patels.space"
+      - name: "Immich"
+        logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/immich.png"
+        tag: "photos video"
+        url: "https://immich.local.patels.space"
   - name: "Management"
     icon: "fas fa-cog"
     items:

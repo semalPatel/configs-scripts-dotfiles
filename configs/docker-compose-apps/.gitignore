@@ -3,3 +3,5 @@ traefik/data/acme.json
 traefik/.env
 actual-budget/actual-data
 vaultwarden/vw-data
+immich/postgres
+immich/.env
