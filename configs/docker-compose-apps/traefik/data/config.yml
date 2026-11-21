@@ -1,15 +1,15 @@
 http:
   #region routers
   routers:
-    proxmox:
+    service-node:
       entryPoints:
         - "https"
-      rule: "Host(`proxmox.local.patels.space`)"
+      rule: "Host(`service-node.local.patels.space`)"
       middlewares:
         - default-headers
         - https-redirectscheme
       tls: {}
-      service: proxmox
+      service: service-node
     technitium-dns1:
       entryPoints:
         - "https"
@@ -46,13 +46,40 @@ http:
         - https-redirectscheme
       tls: {}
       service: file-server
+    compute-node:
+      entryPoints:
+        - "https"
+      rule: "Host(`compute-node.local.patels.space`)"
+      middlewares:
+        - default-headers
+        - https-redirectscheme
+      tls: {}
+      service: compute-node
+    storage-node:
+      entryPoints:
+        - "https"
+      rule: "Host(`storage-node.local.patels.space`)"
+      middlewares:
+        - default-headers
+        - https-redirectscheme
+      tls: {}
+      service: storage-node
   #endregion
   #region services
   services:
-    proxmox:
+    service-node:
       loadBalancer:
         servers:
           - url: "https://192.168.1.9:8006"
+    compute-node:
+      loadBalancer:
+        servers:
+          - url: "https://192.168.1.12:8006"
+        passHostHeader: true
+    storage-node:
+      loadBalancer:
+        servers:
+          - url: "https://192.168.1.16:8006"
         passHostHeader: true
     technitium-dns1:
       loadBalancer:
@@ -72,7 +99,7 @@ http:
     file-server:
       loadBalancer:
         servers:
-          - url: "http://192.168.1.73:5000/"
+          - url: "http://192.168.1.8:5000/"
         passHostHeader: true
   #endregion
   middlewares:
